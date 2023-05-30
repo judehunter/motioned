@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.options.json",
+  "compilerOptions": {
+    "verbatimModuleSyntax": false,
+    "declaration": true,
+    "module": "ESNext",
+    "target": "ESNext",
+    "declarationDir": "./dist",
+    "outDir": "./dist",
+    "jsx": "react-jsx"
+  },
+  "include": [
+    "src/**/*",
+    "tests/**/*"
+  ],
+  "references": []
+}

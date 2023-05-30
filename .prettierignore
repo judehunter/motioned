@@ -1,0 +1,30 @@
+.cache/
+node_modules/
+build/
+cjs/
+coverage/
+dist/
+dts/
+esm/
+lib/
+mjs/
+umd/
+*.d.ts
+*.d.cts
+*.d.mts
+*.min.js
+*.map
+*.snap
+
+# Vue files are formatted via ESLint
+*.vue
+
+# Next
+.next/
+
+# Nuxt
+.nuxt/
+.output/
+
+# Svelte
+.svelte-kit/

@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.options.json",
+  "compilerOptions": {
+    "verbatimModuleSyntax": false,
+    "declaration": true,
+    "module": "ESNext",
+    "target": "ESNext",
+    "rootDir": "./src",
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "references": []
+}

@@ -1,0 +1,32 @@
+{
+  "name": "motioned",
+  "version": "0.0.0",
+  "description": "Fully-featured animation library for React",
+  "keywords": [
+    "node",
+    "lib",
+    "esm"
+  ],
+  "author": "judehunter",
+  "license": "MIT",
+  "repository": "https://github.com/judehunter/motioned",
+  "scripts": {
+    "build": "microbundle --jsx --tsconfig tsconfig.build.json",
+    "dev": "microbundle watch --jsx React.createElement --tsconfig tsconfig.build.json"
+  },
+  "type": "module",
+  "source": "src/index.ts",
+  "main": "dist/index.umd.js",
+  "module": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.modern.mjs"
+    }
+  },
+  "types": "dist/index.d.ts",
+  "engines": {
+    "node": ">=14.15.0"
+  }
+}
