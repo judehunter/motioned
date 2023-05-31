@@ -1,6 +1,6 @@
-import React, { ComponentProps, useEffect, useRef, useState } from 'react';
+import React, { ComponentProps, useEffect, useRef } from 'react';
 
-const animatableProperties = ['opacity', 'x', 'y'];
+const animatableProperties = ['opacity', 'x', 'y'] as const;
 type AnimatableProperty = (typeof animatableProperties)[number];
 
 type Transition = Partial<{
@@ -51,6 +51,13 @@ function useAnimateOptionsEffect(
   useEffect(() => cb(prev.current), [ref.current]);
 }
 
+const coerceToCssValue = (value: string | number) => {
+  if (typeof value === 'number') {
+    return `${value}px`;
+  }
+  return value;
+};
+
 export const m = {
   div: ({
     animate,
@@ -61,27 +68,37 @@ export const m = {
     animate: AnimateOptions;
   } & ComponentProps<'div'>) => {
     const elem = useRef<HTMLDivElement>(null!);
+    const currentAnim = useRef<Animation | undefined>(undefined);
+
     useAnimateOptionsEffect(animate, () => {
-      // console.log({ ...prev }, { ...animate });
-      animate.transform = `translate(${animate.x ?? 0}px, ${animate.y ?? 0}px)`;
-      const transform = window
+      const next = {
+        translate: `${coerceToCssValue(animate.x ?? 0)} ${coerceToCssValue(
+          animate.y ?? 0,
+        )}`,
+      };
+
+      const translate = window
         .getComputedStyle(elem.current)
-        .getPropertyValue('transform');
-      const matrix = new WebKitCSSMatrix(transform);
-      const prev = { transform: `translate(${matrix.m41}px, ${0}px)` };
+        .getPropertyValue('translate');
 
-      if (prev) {
-        const anim = elem.current.animate([prev, animate], {
-          duration: 1000,
-          fill: 'forwards',
-        });
+      const prev = { translate };
 
-        anim.finished.then(() => {
-          anim.commitStyles();
-          anim.cancel();
-        });
-      }
+      currentAnim.current?.cancel();
+
+      const anim = elem.current.animate([prev, next], {
+        duration: 300,
+        fill: 'forwards',
+        easing: 'ease-in-out',
+      });
+
+      currentAnim.current = anim;
+
+      anim.finished.then(() => {
+        anim.commitStyles();
+        anim.cancel();
+      });
     });
+
     return <div ref={elem} {...rest} />;
   },
 };

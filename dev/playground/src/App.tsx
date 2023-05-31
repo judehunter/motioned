@@ -1,33 +1,28 @@
+import { m } from 'motioned';
 import { useState } from 'react';
-import reactLogo from './assets/react.svg';
-// import viteLogo from '/vite.svg'
-import './App.css';
 
+const Anim = () => {
+  const [x, setX] = useState(10);
+  const [y, setY] = useState(10);
+  return (
+    <m.div
+      initial={{}}
+      animate={{ x, y }}
+      className="w-16 h-16 bg-green-500"
+      role="button"
+      onClick={() => {
+        setX(Math.random() * 50);
+        setY(Math.random() * 50);
+      }}
+    ></m.div>
+  );
+};
 function App() {
-  const [count, setCount] = useState(0);
-
   return (
     <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          {/* <img src={} className="logo" alt="Vite logo" /> */}
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+      <div className="max-w-xl mx-auto p-20">
+        <Anim />
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
     </>
   );
 }

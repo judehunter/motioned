@@ -40,7 +40,6 @@ export const Button = ({
     : 'storybook-button--secondary';
 
   const [x, setX] = useState(10);
-  console.log(x);
   return (
     <button
       onClick={() => setX((x) => -x)}

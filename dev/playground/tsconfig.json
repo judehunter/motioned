@@ -9,12 +9,15 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
+    "paths": {
+      "motioned": [
+        "../../packages/motioned/src/index.ts"
+      ],
+    },
+    "baseUrl": "."
   },
   "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules"
+    "./src/**/*"
   ],
   "references": [
     {
