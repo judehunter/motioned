@@ -1,16 +1,25 @@
-import React, { ComponentProps, useEffect, useRef } from 'react';
+import React, { ComponentProps, useEffect, useMemo, useRef } from 'react';
 
-const animatableProperties = ['opacity', 'x', 'y', 'rotate', 'scale'] as const;
+type ValueOrKeyframes<T> = T | T[] | [null, ...T[]];
 
-type AnimatableProperty = 'opacity' | 'x' | 'y' | 'rotate' | 'scale';
-
-type AnimatablePropertyObject = Partial<{
-  opacity: number;
-  x: number | string;
-  y: number | string;
-  rotate: number | string;
-  scale: number;
+type AnimateProperties = Partial<{
+  opacity: ValueOrKeyframes<number>;
+  // x: ValueOrKeyframes<number | string>;
+  // y: ValueOrKeyframes<number | string>;
+  rotate: ValueOrKeyframes<number | string>;
+  translate: ValueOrKeyframes<string>;
+  scale: ValueOrKeyframes<number>;
 }>;
+
+type AnimatePropertyName = keyof AnimateProperties;
+const possibleAnimatePropertyNames = [
+  'opacity',
+  // 'x',
+  // 'y',
+  'rotate',
+  'translate',
+  'scale',
+] as const;
 
 type Transition = Partial<{
   duration: number;
@@ -18,8 +27,8 @@ type Transition = Partial<{
   easing: string;
 }>;
 
-export type AnimateOptions = AnimatablePropertyObject & {
-  transition?: Transition & Partial<Record<AnimatableProperty, Transition>>;
+export type AnimateOptions = AnimateProperties & {
+  transition?: Transition & Partial<Record<AnimatePropertyName, Transition>>;
 };
 
 const animateOptionsEqual = (
@@ -29,7 +38,12 @@ const animateOptionsEqual = (
   if (b === undefined) {
     return false;
   }
-  for (const prop of animatableProperties) {
+  for (const prop of possibleAnimatePropertyNames) {
+    if (Array.isArray(a[prop]) && Array.isArray(b[prop])) {
+    }
+    if (Array.isArray(a[prop]) !== Array.isArray(b[prop])) {
+      return false;
+    }
     if (a[prop] !== b[prop]) {
       return false;
     }
@@ -44,9 +58,7 @@ function useAnimateOptionsEffect(
   const ref = useRef<AnimateOptions | undefined>();
   const prev = useRef<AnimateOptions | undefined>();
 
-  // console.log(ref.current, opts);
   if (!animateOptionsEqual(opts, ref.current)) {
-    // console.log('different');
     prev.current = ref.current;
     ref.current = opts;
   }
@@ -54,25 +66,81 @@ function useAnimateOptionsEffect(
   useEffect(() => cb(prev.current), [ref.current]);
 }
 
-const coerceToCssValue = (value: string | number, unit: 'px' | 'deg') => {
+const addPostfixToNumber = (value: string | number, unit: 'px' | 'deg') => {
   if (typeof value === 'number') {
     return `${value}${unit}`;
   }
   return value;
 };
 
-const animateOptionsToStyle = (opts: AnimateOptions) => {
-  const style = {
-    opacity: `${opts.opacity ?? 1}`,
-    translate: `${coerceToCssValue(opts.x ?? 0, 'px')} ${coerceToCssValue(
-      opts.y ?? 0,
-      'px',
-    )}`,
-    rotate: `${coerceToCssValue(opts.rotate ?? 0, 'deg')}`,
-    scale: `${opts.scale ?? 1}`,
-  };
+const coerceToCssValue = (
+  property: AnimatePropertyName,
+  value: string | number,
+): string => {
+  if (typeof value === 'number') {
+    const match = {
+      opacity: () => `${value}`,
+      translate: () => `${value}`,
+      rotate: () => `${addPostfixToNumber(value, 'deg')}`,
+      scale: () => `${value}`,
+    };
+    return match[property]();
+  }
+  return value;
+};
 
-  return style;
+const removeUndefineds = <T extends Record<string, any>>(obj: T) => {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([_, v]) => v !== undefined),
+  ) as Partial<T>;
+};
+
+// const resolveShorthands = (properties: AnimateProperties) => {
+//   const translate = (properties.x || properties.y) ? ;
+//   return removeUndefineds({translate})
+// }
+
+// const transformAnimateProperties = (properties: AnimateProperties) => {
+//   const transformed = {
+//     opacity: properties.opacity ? `${properties.opacity}` : undefined,
+//     translate: (properties.x || properties.y) ? `${addPostfixToNumber(properties.x, 'px')} ${addPostfixToNumber(
+//       properties.y ?? 0,
+//       'px',
+//     )}` : undefined,
+//     rotate: `${addPostfixToNumber(properties.rotate ?? 0, 'deg')}`,
+//     scale: `${properties.scale ?? 1}`,
+//   };
+
+//   return removeUndefineds(transformed);
+// }
+// const coerceAnimatePropertyObjectToCssValue = (opts: AnimateProperties) => {
+//   const style = {
+//     opacity: `${opts.opacity ?? 1}`,
+//     translate: `${coerceToCssValue(opts.x ?? 0, 'px')} ${coerceToCssValue(
+//       opts.y ?? 0,
+//       'px',
+//     )}`,
+//     rotate: `${coerceToCssValue(opts.rotate ?? 0, 'deg')}`,
+//     scale: `${opts.scale ?? 1}`,
+//   };
+
+//   return style;
+// };
+
+const animatePropertiesToStyle = (properties: AnimateProperties) => {
+  return Object.fromEntries(
+    Object.entries(properties)
+      .map(([name, valueOrKeyframes]) => {
+        const value = Array.isArray(valueOrKeyframes)
+          ? valueOrKeyframes[0]
+          : valueOrKeyframes;
+        if (value === null) {
+          return undefined;
+        }
+        return [name, coerceToCssValue(name as AnimatePropertyName, value)];
+      })
+      .filter((x): x is [AnimatePropertyName, string] => x !== undefined),
+  );
 };
 
 type NoInfer<T> = [T][T extends any ? 0 : never];
@@ -82,7 +150,7 @@ type Variants<TVariants extends string = string> = Record<
   AnimateOptions
 >;
 
-const againstVariants = <T extends string | AnimateOptions | undefined,>(
+const againstVariants = <T extends string | AnimateOptions>(
   variants: Variants | undefined,
   key: T,
 ) => {
@@ -95,7 +163,7 @@ const againstVariants = <T extends string | AnimateOptions | undefined,>(
     }
     return variants[key];
   } else {
-    return key;
+    return key as AnimateOptions;
   }
 };
 
@@ -106,39 +174,65 @@ export const m = {
     variants,
     ...rest
   }: {
-    initial?: AnimatablePropertyObject | NoInfer<TVariants>;
+    initial?: AnimateProperties | NoInfer<TVariants>;
     animate: AnimateOptions | NoInfer<TVariants>;
     variants?: Variants<TVariants>;
   } & ComponentProps<'div'>) => {
+    const memodInitial = useMemo(() => initial, []);
     const elem = useRef<HTMLDivElement>(null!);
-    const currentAnim = useRef<Animation | undefined>(undefined);
+    const currentAnimSet = useRef<Animation[] | undefined>(undefined);
 
-    useAnimateOptionsEffect(animate, () => {
-      animate = againstVariants(variants, animate);
+    const matchedAnimate = againstVariants(variants, animate);
+    // console.log(animate);
+    useAnimateOptionsEffect(matchedAnimate, () => {
+      // const next = animateOptionsToStyle(animate);
 
-      const next = animateOptionsToStyle(animate);
+      // const computedStyles = window.getComputedStyle(elem.current);
+
+      // const translate = computedStyles.getPropertyValue('translate');
+      // const rotate = computedStyles.getPropertyValue('rotate');
+
+      // const prev = { translate, rotate };
+
+      for (const currentAnim of currentAnimSet.current ?? []) {
+        currentAnim.commitStyles();
+        currentAnim.cancel();
+      }
+      currentAnimSet.current = [];
+
+      const { transition, ...properties } = matchedAnimate;
 
       const computedStyles = window.getComputedStyle(elem.current);
+      const getCurrentValue = (property: string) => {
+        return computedStyles.getPropertyValue(property);
+      };
+      for (const [name, valueOrKeyframes] of Object.entries(properties)) {
+        const keyframes = Array.isArray(valueOrKeyframes)
+          ? valueOrKeyframes[0] === null
+            ? [getCurrentValue(name), ...valueOrKeyframes.slice(1)]
+            : valueOrKeyframes
+          : [getCurrentValue(name), valueOrKeyframes];
 
-      const translate = computedStyles.getPropertyValue('translate');
-      const rotate = computedStyles.getPropertyValue('rotate');
-
-      const prev = { translate, rotate };
-
-      currentAnim.current?.cancel();
-
-      const anim = elem.current.animate([prev, next], {
-        duration: 300,
-        fill: 'forwards',
-        easing: 'ease-in-out',
-      });
-
-      currentAnim.current = anim;
-
-      anim.finished.then(() => {
-        anim.commitStyles();
-        anim.cancel();
-      });
+        const coercedKeyframes = keyframes.map((value) =>
+          coerceToCssValue(name as AnimatePropertyName, value!),
+        );
+        // console.log(coercedKeyframes);
+        const anim = elem.current.animate(
+          coercedKeyframes.map((keyframe) => ({
+            [name]: keyframe,
+            easing: 'ease-out',
+          })),
+          {
+            duration: 700,
+            fill: 'forwards',
+          },
+        );
+        currentAnimSet.current.push(anim);
+        anim.finished.then(() => {
+          anim.commitStyles();
+          anim.cancel();
+        });
+      }
     });
 
     return (
@@ -147,8 +241,8 @@ export const m = {
         {...rest}
         style={{
           ...rest.style,
-          ...(initial
-            ? animateOptionsToStyle(againstVariants(variants, initial))
+          ...(memodInitial
+            ? animatePropertiesToStyle(againstVariants(variants, memodInitial))
             : {}),
         }}
       />
