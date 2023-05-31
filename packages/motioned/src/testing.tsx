@@ -1,7 +1,16 @@
 import React, { ComponentProps, useEffect, useRef } from 'react';
 
-const animatableProperties = ['opacity', 'x', 'y'] as const;
-type AnimatableProperty = (typeof animatableProperties)[number];
+const animatableProperties = ['opacity', 'x', 'y', 'rotate', 'scale'] as const;
+
+type AnimatableProperty = 'opacity' | 'x' | 'y' | 'rotate' | 'scale';
+
+type AnimatablePropertyObject = Partial<{
+  opacity: number;
+  x: number | string;
+  y: number | string;
+  rotate: number | string;
+  scale: number;
+}>;
 
 type Transition = Partial<{
   duration: number;
@@ -9,15 +18,9 @@ type Transition = Partial<{
   easing: string;
 }>;
 
-type AnimateOptions = Partial<Record<AnimatableProperty, string | number>> & {
+export type AnimateOptions = AnimatablePropertyObject & {
   transition?: Transition & Partial<Record<AnimatableProperty, Transition>>;
 };
-
-// const valueToKeyframes = () => {};
-
-// const animate = (elem: HTMLElement, opts: AnimateOptions) => {
-//   elem.animate();
-// };
 
 const animateOptionsEqual = (
   a: AnimateOptions,
@@ -51,37 +54,76 @@ function useAnimateOptionsEffect(
   useEffect(() => cb(prev.current), [ref.current]);
 }
 
-const coerceToCssValue = (value: string | number) => {
+const coerceToCssValue = (value: string | number, unit: 'px' | 'deg') => {
   if (typeof value === 'number') {
-    return `${value}px`;
+    return `${value}${unit}`;
   }
   return value;
 };
 
+const animateOptionsToStyle = (opts: AnimateOptions) => {
+  const style = {
+    opacity: `${opts.opacity ?? 1}`,
+    translate: `${coerceToCssValue(opts.x ?? 0, 'px')} ${coerceToCssValue(
+      opts.y ?? 0,
+      'px',
+    )}`,
+    rotate: `${coerceToCssValue(opts.rotate ?? 0, 'deg')}`,
+    scale: `${opts.scale ?? 1}`,
+  };
+
+  return style;
+};
+
+type NoInfer<T> = [T][T extends any ? 0 : never];
+
+type Variants<TVariants extends string = string> = Record<
+  TVariants,
+  AnimateOptions
+>;
+
+const againstVariants = <T extends string | AnimateOptions | undefined,>(
+  variants: Variants | undefined,
+  key: T,
+) => {
+  if (typeof key === 'string') {
+    if (variants === undefined) {
+      throw new Error('Variants not defined');
+    }
+    if (variants[key] === undefined) {
+      throw new Error(`Variant "${key}" not found`);
+    }
+    return variants[key];
+  } else {
+    return key;
+  }
+};
+
 export const m = {
-  div: ({
+  div: <TVariants extends string>({
     animate,
     initial,
+    variants,
     ...rest
   }: {
-    initial: Partial<Record<AnimatableProperty, string | number>>;
-    animate: AnimateOptions;
+    initial?: AnimatablePropertyObject | NoInfer<TVariants>;
+    animate: AnimateOptions | NoInfer<TVariants>;
+    variants?: Variants<TVariants>;
   } & ComponentProps<'div'>) => {
     const elem = useRef<HTMLDivElement>(null!);
     const currentAnim = useRef<Animation | undefined>(undefined);
 
     useAnimateOptionsEffect(animate, () => {
-      const next = {
-        translate: `${coerceToCssValue(animate.x ?? 0)} ${coerceToCssValue(
-          animate.y ?? 0,
-        )}`,
-      };
+      animate = againstVariants(variants, animate);
 
-      const translate = window
-        .getComputedStyle(elem.current)
-        .getPropertyValue('translate');
+      const next = animateOptionsToStyle(animate);
 
-      const prev = { translate };
+      const computedStyles = window.getComputedStyle(elem.current);
+
+      const translate = computedStyles.getPropertyValue('translate');
+      const rotate = computedStyles.getPropertyValue('rotate');
+
+      const prev = { translate, rotate };
 
       currentAnim.current?.cancel();
 
@@ -99,6 +141,17 @@ export const m = {
       });
     });
 
-    return <div ref={elem} {...rest} />;
+    return (
+      <div
+        ref={elem}
+        {...rest}
+        style={{
+          ...rest.style,
+          ...(initial
+            ? animateOptionsToStyle(againstVariants(variants, initial))
+            : {}),
+        }}
+      />
+    );
   },
 };
