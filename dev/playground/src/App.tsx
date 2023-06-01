@@ -43,18 +43,18 @@ import { motion } from 'framer-motion';
 //   );
 // };
 const Anim3 = () => {
-  const [variant, setVariant] = useState<'fast' | 'slow'>('fast');
+  const [variant, setVariant] = useState<'large' | 'small'>('large');
   return (
     <m.div
       initial={variant}
       animate={variant}
       variants={{
-        slow: { scale: [null, 2, 1] },
-        fast: { scale: [null, 2, 3] },
+        small: { scale: 1, transition: { easing: (t) => t } },
+        large: { scale: 2, transition: { easing: (t) => t } },
       }}
       className="w-16 h-16 bg-green-500 rounded-tl-2xl"
       onClick={() =>
-        setVariant((variant) => (variant === 'fast' ? 'slow' : 'fast'))
+        setVariant((variant) => (variant === 'large' ? 'small' : 'large'))
       }
     >
       {variant}
@@ -62,30 +62,32 @@ const Anim3 = () => {
   );
 };
 const Anim3F = () => {
-  const [variant, setVariant] = useState<'fast' | 'slow'>('fast');
+  const [variant, setVariant] = useState<number>(0);
   return (
-    <motion.div
-      initial={variant}
-      animate={variant}
-      variants={{
-        slow: { scale: [3, 2, 1] },
-        fast: {
-          scale: [1, 2, 3],
-        },
-      }}
-      className="w-16 h-16 bg-green-500 rounded-tl-2xl"
-      onClick={() =>
-        setVariant((variant) => (variant === 'fast' ? 'slow' : 'fast'))
-      }
-    >
-      {variant}
-    </motion.div>
+    <div>
+      <div onClick={() => setVariant((v) => (v + 1) % 3)}>click</div>
+      <motion.div
+        initial={'' + variant}
+        animate={'' + variant}
+        variants={{
+          '0': { x: 0 },
+          '1': {
+            x: 100,
+          },
+          '2': { x: 100, y: 100 },
+        }}
+        transition={{ type: 'tween', duration: 1 }}
+        className="w-16 h-16 bg-green-500 rounded-tl-2xl"
+      >
+        {variant}
+      </motion.div>
+    </div>
   );
 };
 function App() {
   return (
     <>
-      <div className="max-w-xl mx-auto p-20 flex flex-col gap-5">
+      <div className="max-w-xl mx-auto p-20 flex flex-col gap-64">
         {/* <Anim1 /> */}
         {/* <Anim2 /> */}
         <Anim3 />
