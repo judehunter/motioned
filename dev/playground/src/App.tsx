@@ -1,5 +1,5 @@
 import { AnimateOptions, m } from 'motioned';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 
 // const Anim1 = () => {
@@ -67,6 +67,47 @@ function easeInOutElastic(x: number): number {
     ? -(Math.pow(2, 20 * x - 10) * Math.sin((20 * x - 11.125) * c5)) / 2
     : (Math.pow(2, -20 * x + 10) * Math.sin((20 * x - 11.125) * c5)) / 2 + 1;
 }
+const sampleSpring = ({
+  stiffness,
+  friction,
+  mass,
+}: {
+  stiffness: number;
+  friction: number;
+  mass: number;
+}) => {
+  // x is normalized to be |a - b| = 1,
+  // since the spring is an easing function,
+  // and so it returns values 0 through 1.
+  let x = 1;
+  let velocity = 0;
+
+  // how often to sample, in seconds
+  const INVERSE_SAMPLE_RESOLUTION = 1 / 60;
+  const MAX_TIME = 10;
+
+  let points = [0];
+  let lastDisplacement = 0;
+  let time = 0;
+  for (; time < MAX_TIME; time += INVERSE_SAMPLE_RESOLUTION) {
+    const acceleration = (-stiffness * x - friction * velocity) / mass;
+    velocity += acceleration * INVERSE_SAMPLE_RESOLUTION;
+    const displacement = velocity * INVERSE_SAMPLE_RESOLUTION;
+    x += displacement;
+    points.push(1 - x);
+
+    // check if we've reached an inflection point,
+    // and break if it's close enough to the equilibrium
+    let CLOSE_ENOUGH = 0.01;
+    if (displacement * lastDisplacement < 0 && Math.abs(x) < CLOSE_ENOUGH) {
+      break;
+    }
+    lastDisplacement = displacement;
+  }
+  points.push(1);
+
+  return { duration: time * 1000, points };
+};
 // const Anim3 = () => {
 //   const [variant, setVariant] = useState<'large' | 'small'>('large');
 //   return (
@@ -100,36 +141,26 @@ function easeInOutElastic(x: number): number {
 // };
 const Anim3 = () => {
   const [variant, setVariant] = useState<'large' | 'small'>('small');
+  const spring = sampleSpring({ friction: 10, stiffness: 100, mass: 1 });
+  const easing = (t: number) =>
+    spring.points[Math.floor((spring.points.length - 1) * t)];
   return (
     <m.div
       initial={variant}
       animate={variant}
       variants={{
         small: {
-          width: ['100px', '30vw', '50vw'],
-          scale: 1,
+          width: '100px',
           transition: {
-            width: {
-              easing: bounce,
-              duration: 1000,
-            },
-            scale: {
-              easing: 'ease-in-out',
-              duration: 300,
-            },
+            easing,
+            duration: spring.duration,
           },
         },
         large: {
-          scale: 1,
-          width: '100px',
+          width: '200px',
           transition: {
-            width: {
-              easing: 'ease-out',
-            },
-            scale: {
-              easing: 'ease-in-out',
-              duration: 300,
-            },
+            easing,
+            duration: spring.duration,
           },
         },
       }}
@@ -151,18 +182,14 @@ const Anim3F = () => {
       animate={variant}
       variants={{
         small: {
-          width: ['100px', '200px', '100px'],
-          scale: 1,
-          transition: {
-            width: {
-              ease: bounce,
-              duration: 1,
-            },
-          },
+          width: 100,
         },
         large: {
-          scale: 3,
+          width: 200,
         },
+      }}
+      transition={{
+        type: 'spring',
       }}
       className="w-16 h-16 bg-green-500 rounded-tl-2xl"
       onClick={() =>
@@ -170,6 +197,26 @@ const Anim3F = () => {
       }
     >
       {variant}
+    </motion.div>
+  );
+};
+const Anim4F = () => {
+  const [width, setWidth] = useState<number>(100);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setWidth((w) => w + 10);
+    }, 400);
+    return () => clearInterval(interval);
+  });
+  return (
+    <motion.div
+      animate={{
+        width,
+      }}
+      className="w-16 h-16 bg-green-500 rounded-tl-2xl"
+      onClick={() => setWidth((x) => x + 50)}
+    >
+      {width}
     </motion.div>
   );
 };

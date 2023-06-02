@@ -189,7 +189,7 @@ const matchAgainstVariants = <T extends string | AnimateOptions>(
   }
 };
 
-// sample points per second
+/** sample points per second */
 const SAMPLE_RESOLUTION = 60;
 
 const sampleEasingFn = (easingFn: EasingFn, duration: number) => {
@@ -202,9 +202,11 @@ const sampleEasingFn = (easingFn: EasingFn, duration: number) => {
   return points;
 };
 
-const interpolateFloat = (a: number, b: number, t: number) => a + (b - a) * t;
-
-const interpolate = (a: string, b: string, t: number) => {
+/**
+ * interpolate between two css values using calc
+ * @param t should be between 0 and 1, inclusive
+ */
+const interpolateWithCalc = (a: string, b: string, t: number) => {
   if (t === 0) {
     return a;
   }
@@ -213,6 +215,56 @@ const interpolate = (a: string, b: string, t: number) => {
   }
   return `calc(${a} + (${b} - ${a}) * ${t})`;
 };
+
+/**
+ * returns a sample for a spring
+ * @param stiffness k in Hooke's law
+ * @param friction damping
+ */
+export const sampleSpring = ({
+  stiffness,
+  friction,
+  mass,
+}: {
+  stiffness: number;
+  friction: number;
+  mass: number;
+}) => {
+  // x is normalized to be |a - b| = 1,
+  // since the spring is an easing function,
+  // and so it returns values 0 through 1.
+  let x = 1;
+  let velocity = 0;
+
+  // how often to sample, in seconds
+  const INVERSE_SAMPLE_RESOLUTION = 1 / SAMPLE_RESOLUTION;
+  const MAX_TIME = 10;
+
+  let points = [0];
+  let lastDisplacement = 0;
+  let time = 0;
+  for (; time < MAX_TIME; time += INVERSE_SAMPLE_RESOLUTION) {
+    const acceleration = (-stiffness * x - friction * velocity) / mass;
+    velocity += acceleration * INVERSE_SAMPLE_RESOLUTION;
+    const displacement = velocity * INVERSE_SAMPLE_RESOLUTION;
+    x += displacement;
+    console.log(displacement);
+    points.push(1 - x);
+
+    // check if we've reached an inflection point,
+    // and break if it's close enough to the equilibrium
+    let CLOSE_ENOUGH = 0.01;
+    if (displacement * lastDisplacement < 0 && Math.abs(x) < CLOSE_ENOUGH) {
+      break;
+    }
+    lastDisplacement = displacement;
+  }
+  points.push(1);
+
+  return { duration: time * 1000, points };
+};
+
+// sampleSpring({ friction: 10, stiffness: 100, mass: 1 });
 
 const DEFAULT_DURATION = 500;
 const useAnimation = (
@@ -285,7 +337,7 @@ const useAnimation = (
           }
           const prevKeyframe = coercedKeyframes[i - 1];
           const prevNextSample = sampleEasingFn(easing, duration).map((y) =>
-            interpolate(prevKeyframe, keyframe, y),
+            interpolateWithCalc(prevKeyframe, keyframe, y),
           );
           return [...acc, ...prevNextSample];
         }, []);

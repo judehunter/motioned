@@ -9,8 +9,8 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "paths": {
-      "motioned": [
-        "../../packages/motioned/src/index.ts"
+      "motioned/*": [
+        "../../packages/motioned/src/*"
       ],
     }
   },
