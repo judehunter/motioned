@@ -15,6 +15,7 @@ type AnimateProperties = Partial<{
   rotate: ValueOrKeyframes<number | string>;
   translate: ValueOrKeyframes<string>;
   scale: ValueOrKeyframes<number>;
+  width: ValueOrKeyframes<number | string>;
 }>;
 
 type AnimatePropertyName = keyof AnimateProperties;
@@ -25,6 +26,7 @@ const possibleAnimatePropertyNames = [
   'rotate',
   'translate',
   'scale',
+  'width',
 ] as const;
 
 type Transition = Partial<{
@@ -83,7 +85,7 @@ const addPostfixToNumber = (value: string | number, unit: 'px' | 'deg') => {
   return value;
 };
 
-const coerceToCssValue = (
+const serializeToCssValue = (
   property: AnimatePropertyName,
   value: string | number,
 ): string => {
@@ -93,11 +95,21 @@ const coerceToCssValue = (
       translate: () => `${value}`,
       rotate: () => `${addPostfixToNumber(value, 'deg')}`,
       scale: () => `${value}`,
+      width: () => `${value}px`,
     };
     return match[property]();
   }
   return value;
 };
+
+// inverse of serialize
+// i.e. for translate: '10px 20px' => {x: '10px', y: '20px'}
+// const parseCssValue= (value: string) => {
+//   const match = {
+//     opacity: () => parseFloat(value),
+//     translate: () =>
+//   }
+// }
 
 const removeUndefineds = <T extends Record<string, any>>(obj: T) => {
   return Object.fromEntries(
@@ -147,7 +159,7 @@ const animatePropertiesToStyle = (properties: AnimateProperties) => {
         if (value === null) {
           return undefined;
         }
-        return [name, coerceToCssValue(name as AnimatePropertyName, value)];
+        return [name, serializeToCssValue(name as AnimatePropertyName, value)];
       })
       .filter((x): x is [AnimatePropertyName, string] => x !== undefined),
   );
@@ -177,7 +189,9 @@ const matchAgainstVariants = <T extends string | AnimateOptions>(
   }
 };
 
-const SAMPLE_RESOLUTION = 10;
+// sample points per second
+const SAMPLE_RESOLUTION = 60;
+
 const sampleEasingFn = (easingFn: EasingFn, duration: number) => {
   const totalPoints = SAMPLE_RESOLUTION * (duration / 1000);
   let points = [];
@@ -190,17 +204,15 @@ const sampleEasingFn = (easingFn: EasingFn, duration: number) => {
 
 const interpolateFloat = (a: number, b: number, t: number) => a + (b - a) * t;
 
-// interpolate between two css values, by parsing them.
-// return coerced again.
-const interpolate =
-  (property: AnimatePropertyName) => (a: string, b: string, t: number) => {
-    if (property === 'scale') {
-      return coerceToCssValue(
-        'scale',
-        interpolateFloat(parseFloat(a), parseFloat(b), t),
-      );
-    } else throw new Error(`Cannot interpolate ${property}`);
-  };
+const interpolate = (a: string, b: string, t: number) => {
+  if (t === 0) {
+    return a;
+  }
+  if (t === 1) {
+    return b;
+  }
+  return `calc(${a} + (${b} - ${a}) * ${t})`;
+};
 
 const DEFAULT_DURATION = 500;
 const useAnimation = (
@@ -251,7 +263,7 @@ const useAnimation = (
       // map non-css convenience values to css values,
       // e.g. 0 -> '0px' for translate
       const coercedKeyframes = rawKeyframes.map((value) =>
-        coerceToCssValue(name as AnimatePropertyName, value!),
+        serializeToCssValue(name as AnimatePropertyName, value!),
       );
 
       let keyframes = [];
@@ -267,14 +279,13 @@ const useAnimation = (
         DEFAULT_DURATION;
 
       if (typeof easing === 'function') {
-        const interpolator = interpolate(name as AnimatePropertyName);
         keyframes = coercedKeyframes.reduce((acc: string[], keyframe, i) => {
           if (i === 0) {
             return [];
           }
           const prevKeyframe = coercedKeyframes[i - 1];
           const prevNextSample = sampleEasingFn(easing, duration).map((y) =>
-            interpolator(prevKeyframe, keyframe, y),
+            interpolate(prevKeyframe, keyframe, y),
           );
           return [...acc, ...prevNextSample];
         }, []);
@@ -282,13 +293,13 @@ const useAnimation = (
         keyframes = rawKeyframes;
       }
 
-      console.log(keyframes);
+      // console.log(keyframes);
 
       // create and start animation
       const anim = elem.current.animate(
         keyframes.map((keyframe) => ({
           [name]: keyframe,
-          easing: 'linear',
+          easing: typeof easing === 'function' ? 'linear' : easing,
         })),
         {
           duration,
