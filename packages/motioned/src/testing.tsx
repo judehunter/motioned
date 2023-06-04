@@ -1,10 +1,13 @@
 import React, {
   ComponentProps,
+  ForwardedRef,
   MutableRefObject,
+  forwardRef,
   useEffect,
   useMemo,
   useRef,
 } from 'react';
+import { match } from 'ts-pattern';
 
 type ValueOrKeyframes<T> = T | T[] | [null, ...T[]];
 
@@ -29,11 +32,26 @@ const possibleAnimatePropertyNames = [
   'width',
 ] as const;
 
-type Transition = Partial<{
-  duration: number;
-  delay: number;
-  easing: 'linear' | 'ease' | 'ease-out' | 'ease-in' | 'ease-in-out' | EasingFn;
-}>;
+type SpringTransition = {
+  easing: 'spring';
+  stiffness?: number;
+  friction?: number;
+  mass?: number;
+};
+
+type Transition =
+  | Partial<{
+      duration: number;
+      delay: number;
+      easing:
+        | 'linear'
+        | 'ease'
+        | 'ease-out'
+        | 'ease-in'
+        | 'ease-in-out'
+        | EasingFn;
+    }>
+  | SpringTransition;
 
 export type AnimateOptions = AnimateProperties & {
   transition?: Transition & Partial<Record<AnimatePropertyName, Transition>>;
@@ -78,14 +96,7 @@ function useAnimateOptionsEffect(
   }, [ref.current]);
 }
 
-const addPostfixToNumber = (value: string | number, unit: 'px' | 'deg') => {
-  if (typeof value === 'number') {
-    return `${value}${unit}`;
-  }
-  return value;
-};
-
-const serializeToCssValue = (
+const coerceToCssValue = (
   property: AnimatePropertyName,
   value: string | number,
 ): string => {
@@ -93,7 +104,7 @@ const serializeToCssValue = (
     const match = {
       opacity: () => `${value}`,
       translate: () => `${value}`,
-      rotate: () => `${addPostfixToNumber(value, 'deg')}`,
+      rotate: () => `${value}deg`,
       scale: () => `${value}`,
       width: () => `${value}px`,
     };
@@ -101,53 +112,6 @@ const serializeToCssValue = (
   }
   return value;
 };
-
-// inverse of serialize
-// i.e. for translate: '10px 20px' => {x: '10px', y: '20px'}
-// const parseCssValue= (value: string) => {
-//   const match = {
-//     opacity: () => parseFloat(value),
-//     translate: () =>
-//   }
-// }
-
-const removeUndefineds = <T extends Record<string, any>>(obj: T) => {
-  return Object.fromEntries(
-    Object.entries(obj).filter(([_, v]) => v !== undefined),
-  ) as Partial<T>;
-};
-
-// const resolveShorthands = (properties: AnimateProperties) => {
-//   const translate = (properties.x || properties.y) ? ;
-//   return removeUndefineds({translate})
-// }
-
-// const transformAnimateProperties = (properties: AnimateProperties) => {
-//   const transformed = {
-//     opacity: properties.opacity ? `${properties.opacity}` : undefined,
-//     translate: (properties.x || properties.y) ? `${addPostfixToNumber(properties.x, 'px')} ${addPostfixToNumber(
-//       properties.y ?? 0,
-//       'px',
-//     )}` : undefined,
-//     rotate: `${addPostfixToNumber(properties.rotate ?? 0, 'deg')}`,
-//     scale: `${properties.scale ?? 1}`,
-//   };
-
-//   return removeUndefineds(transformed);
-// }
-// const coerceAnimatePropertyObjectToCssValue = (opts: AnimateProperties) => {
-//   const style = {
-//     opacity: `${opts.opacity ?? 1}`,
-//     translate: `${coerceToCssValue(opts.x ?? 0, 'px')} ${coerceToCssValue(
-//       opts.y ?? 0,
-//       'px',
-//     )}`,
-//     rotate: `${coerceToCssValue(opts.rotate ?? 0, 'deg')}`,
-//     scale: `${opts.scale ?? 1}`,
-//   };
-
-//   return style;
-// };
 
 const animatePropertiesToStyle = (properties: AnimateProperties) => {
   return Object.fromEntries(
@@ -159,7 +123,7 @@ const animatePropertiesToStyle = (properties: AnimateProperties) => {
         if (value === null) {
           return undefined;
         }
-        return [name, serializeToCssValue(name as AnimatePropertyName, value)];
+        return [name, coerceToCssValue(name as AnimatePropertyName, value)];
       })
       .filter((x): x is [AnimatePropertyName, string] => x !== undefined),
   );
@@ -202,26 +166,48 @@ const sampleEasingFn = (easingFn: EasingFn, duration: number) => {
   return points;
 };
 
+// tagged template function to extract values from complex css values
+const prepare = (strings: TemplateStringsArray, ...values: string[]) => {
+  return {
+    strings,
+    values,
+  };
+};
+
+// // join into one string
+// const css = strings.reduce((acc, str, i) => {
+//   return acc + str + (values[i] ?? '');
+// }
+
 /**
  * interpolate between two css values using calc
  * @param t should be between 0 and 1, inclusive
  */
-const interpolateWithCalc = (a: string, b: string, t: number) => {
-  if (t === 0) {
-    return a;
-  }
-  if (t === 1) {
-    return b;
-  }
-  return `calc(${a} + (${b} - ${a}) * ${t})`;
-};
+// const interpolateWithCalc = (a: string, b: string, t: number) => {
+//   if (t === 0) {
+//     return a;
+//   }
+//   if (t === 1) {
+//     return b;
+//   }
+//   return `calc((${a}) + ((${b}) - (${a})) * ${t})`;
+// };
+
+// const interpolatePrepared = (prepared: {
+//   strings: TemplateStringsArray;
+//   values: string[];
+// }) => {
+//   const { strings, values } = prepared;
+//   const interpolatedValues = values.map((value) => interpolateWithCalc(value));
+
+// };
 
 /**
  * returns a sample for a spring
  * @param stiffness k in Hooke's law
  * @param friction damping
  */
-export const sampleSpring = ({
+const sampleSpring = ({
   stiffness,
   friction,
   mass,
@@ -248,13 +234,12 @@ export const sampleSpring = ({
     velocity += acceleration * INVERSE_SAMPLE_RESOLUTION;
     const displacement = velocity * INVERSE_SAMPLE_RESOLUTION;
     x += displacement;
-    console.log(displacement);
     points.push(1 - x);
 
     // check if we've reached an inflection point,
     // and break if it's close enough to the equilibrium
-    let CLOSE_ENOUGH = 0.01;
-    if (displacement * lastDisplacement < 0 && Math.abs(x) < CLOSE_ENOUGH) {
+    let DELTA = 0.01;
+    if (displacement * lastDisplacement < 0 && Math.abs(x) < DELTA) {
       break;
     }
     lastDisplacement = displacement;
@@ -264,7 +249,10 @@ export const sampleSpring = ({
   return { duration: time * 1000, points };
 };
 
-// sampleSpring({ friction: 10, stiffness: 100, mass: 1 });
+const asSelf = <TOriginal, TCast>(
+  original: TOriginal,
+  cast: (original: TOriginal) => TCast,
+) => original as any as TCast;
 
 const DEFAULT_DURATION = 500;
 const useAnimation = (
@@ -287,7 +275,7 @@ const useAnimation = (
     currentAnimSet.current = [];
 
     // split transition and properties
-    const { transition, ...properties } = matchedAnimate;
+    const { transition: _transition, ...properties } = matchedAnimate;
 
     // get current computed styles
     const computedStyles = window.getComputedStyle(elem.current);
@@ -314,38 +302,42 @@ const useAnimation = (
 
       // map non-css convenience values to css values,
       // e.g. 0 -> '0px' for translate
-      const coercedKeyframes = rawKeyframes.map((value) =>
-        serializeToCssValue(name as AnimatePropertyName, value!),
+      const keyframes = rawKeyframes.map((value) =>
+        coerceToCssValue(name as AnimatePropertyName, value!),
       );
 
-      let keyframes = [];
+      const transition =
+        _transition?.[name as AnimatePropertyName] ?? _transition;
 
-      // if the catch-all easing or the specific easing is a function,
-      // sample the easing function and use the sampled values as keyframes
-      // for each pair of keyframes
-      const easing =
-        transition?.easing ?? transition?.[name as AnimatePropertyName]?.easing;
-      const duration =
-        transition?.duration ??
-        transition?.[name as AnimatePropertyName]?.duration ??
-        DEFAULT_DURATION;
+      let easing = asSelf(
+        transition?.easing ?? 'ease-in-out',
+        (self) => self as typeof self | (string & {}),
+      );
 
-      if (typeof easing === 'function') {
-        keyframes = coercedKeyframes.reduce((acc: string[], keyframe, i) => {
-          if (i === 0) {
-            return [];
-          }
-          const prevKeyframe = coercedKeyframes[i - 1];
-          const prevNextSample = sampleEasingFn(easing, duration).map((y) =>
-            interpolateWithCalc(prevKeyframe, keyframe, y),
-          );
-          return [...acc, ...prevNextSample];
-        }, []);
+      let duration: number;
+      if (transition?.easing === 'spring') {
+        const stiffness = transition?.stiffness ?? 100;
+        const friction = transition?.friction ?? 10;
+        const mass = transition?.mass ?? 1;
+        const spring = sampleSpring({
+          stiffness,
+          friction,
+          mass,
+        });
+        easing = (t: number) =>
+          spring.points[Math.floor((spring.points.length - 1) * t)];
+        duration = spring.duration;
       } else {
-        keyframes = rawKeyframes;
+        duration = transition?.duration ?? DEFAULT_DURATION;
       }
 
-      // console.log(keyframes);
+      if (typeof easing === 'function') {
+        easing = `linear(${sampleEasingFn(easing, duration).join(',')})`;
+      }
+
+      console.log(easing);
+
+      console.log(keyframes);
 
       // create and start animation
       const anim = elem.current.animate(
@@ -372,8 +364,8 @@ const useAnimation = (
   });
 };
 
-export const m = {
-  div: <TVariants extends string>({
+const mDiv = <TVariants extends string>(
+  {
     animate,
     initial,
     variants,
@@ -382,27 +374,41 @@ export const m = {
     initial?: AnimateProperties | NoInfer<TVariants>;
     animate: AnimateOptions | NoInfer<TVariants>;
     variants?: Variants<TVariants>;
-  } & ComponentProps<'div'>) => {
-    const memodMatchedInitial = useMemo(
-      () =>
-        initial
-          ? animatePropertiesToStyle(matchAgainstVariants(variants, initial))
-          : {},
-      [],
-    );
-    const elem = useRef<HTMLDivElement>(null!);
+  } & ComponentProps<'div'>,
+  ref: ForwardedRef<HTMLDivElement>,
+) => {
+  const memodMatchedInitial = useMemo(
+    () =>
+      initial
+        ? animatePropertiesToStyle(matchAgainstVariants(variants, initial))
+        : {},
+    [],
+  );
+  const elem = useRef<HTMLDivElement>(null!);
 
-    useAnimation(elem, animate, variants);
+  useAnimation(elem, animate, variants);
 
-    return (
-      <div
-        ref={elem}
-        {...rest}
-        style={{
-          ...rest.style,
-          ...memodMatchedInitial,
-        }}
-      />
-    );
-  },
+  ref;
+  return (
+    <div
+      ref={(e) => {
+        if (!e) return;
+        elem.current = e;
+        if (typeof ref === 'function') {
+          ref(e);
+        } else if (ref) {
+          ref.current = e;
+        }
+      }}
+      {...rest}
+      style={{
+        ...rest.style,
+        ...memodMatchedInitial,
+      }}
+    />
+  );
+};
+
+export const m = {
+  div: forwardRef(mDiv) as typeof mDiv,
 };

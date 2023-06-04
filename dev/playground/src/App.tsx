@@ -139,6 +139,7 @@ const sampleSpring = ({
 //     </m.div>
 //   );
 // };
+
 const Anim3 = () => {
   const [variant, setVariant] = useState<'large' | 'small'>('small');
   const spring = sampleSpring({ friction: 10, stiffness: 100, mass: 1 });
@@ -157,10 +158,46 @@ const Anim3 = () => {
           },
         },
         large: {
-          width: '200px',
+          width: '500px',
           transition: {
             easing,
             duration: spring.duration,
+          },
+        },
+      }}
+      className="w-16 h-16 bg-green-500 rounded-tl-2xl"
+      onClick={() =>
+        setVariant((variant) => (variant === 'large' ? 'small' : 'large'))
+      }
+    >
+      {variant}
+    </m.div>
+  );
+};
+
+const Anim4 = () => {
+  const [variant, setVariant] = useState<'large' | 'small'>('small');
+  return (
+    <m.div
+      initial={variant}
+      animate={variant}
+      variants={{
+        small: {
+          width: '100px',
+          transition: {
+            easing: 'spring',
+            friction: 10,
+            stiffness: 100,
+            mass: 1,
+          },
+        },
+        large: {
+          width: '500px',
+          transition: {
+            easing: 'spring',
+            friction: 10,
+            stiffness: 100,
+            mass: 1,
           },
         },
       }}
@@ -185,11 +222,14 @@ const Anim3F = () => {
           width: 100,
         },
         large: {
-          width: 200,
+          width: 500,
         },
       }}
       transition={{
         type: 'spring',
+        stiffness: 100,
+        damping: 10,
+        mass: 1,
       }}
       className="w-16 h-16 bg-green-500 rounded-tl-2xl"
       onClick={() =>
@@ -250,6 +290,7 @@ function App() {
         {/* <Anim1 /> */}
         {/* <Anim2 /> */}
         <Anim3 />
+        <Anim4 />
         <Anim3F />
       </div>
     </>

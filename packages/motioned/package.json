@@ -28,5 +28,13 @@
   "types": "dist/index.d.ts",
   "engines": {
     "node": ">=14.15.0"
+  },
+  "devDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
   }
 }
