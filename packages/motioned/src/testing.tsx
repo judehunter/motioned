@@ -17,6 +17,7 @@ type AnimateProperties = Partial<{
   // y: ValueOrKeyframes<number | string>;
   rotate: ValueOrKeyframes<number | string>;
   translate: ValueOrKeyframes<string>;
+  transform: ValueOrKeyframes<string>;
   scale: ValueOrKeyframes<number>;
   width: ValueOrKeyframes<number | string>;
 }>;
@@ -28,6 +29,7 @@ const possibleAnimatePropertyNames = [
   // 'y',
   'rotate',
   'translate',
+  'transform',
   'scale',
   'width',
 ] as const;
@@ -107,6 +109,7 @@ const coerceToCssValue = (
       rotate: () => `${value}deg`,
       scale: () => `${value}`,
       width: () => `${value}px`,
+      transform: () => `${value}`,
     };
     return match[property]();
   }
@@ -166,72 +169,41 @@ const sampleEasingFn = (easingFn: EasingFn, duration: number) => {
   return points;
 };
 
-// tagged template function to extract values from complex css values
-const prepare = (strings: TemplateStringsArray, ...values: string[]) => {
-  return {
-    strings,
-    values,
-  };
-};
-
-// // join into one string
-// const css = strings.reduce((acc, str, i) => {
-//   return acc + str + (values[i] ?? '');
-// }
-
-/**
- * interpolate between two css values using calc
- * @param t should be between 0 and 1, inclusive
- */
-// const interpolateWithCalc = (a: string, b: string, t: number) => {
-//   if (t === 0) {
-//     return a;
-//   }
-//   if (t === 1) {
-//     return b;
-//   }
-//   return `calc((${a}) + ((${b}) - (${a})) * ${t})`;
-// };
-
-// const interpolatePrepared = (prepared: {
-//   strings: TemplateStringsArray;
-//   values: string[];
-// }) => {
-//   const { strings, values } = prepared;
-//   const interpolatedValues = values.map((value) => interpolateWithCalc(value));
-
-// };
-
 /**
  * returns a sample for a spring
  * @param stiffness k in Hooke's law
  * @param friction damping
  */
-const sampleSpring = ({
-  stiffness,
-  friction,
-  mass,
-}: {
-  stiffness: number;
-  friction: number;
-  mass: number;
-}) => {
+const sampleSpring = (
+  {
+    stiffness,
+    friction,
+    mass,
+  }: {
+    stiffness: number;
+    friction: number;
+    mass: number;
+  },
+  startVelocity: number,
+) => {
   // x is normalized to be |a - b| = 1,
   // since the spring is an easing function,
   // and so it returns values 0 through 1.
   let x = 1;
-  let velocity = 0;
+  let velocity = startVelocity;
 
   // how often to sample, in seconds
   const INVERSE_SAMPLE_RESOLUTION = 1 / SAMPLE_RESOLUTION;
   const MAX_TIME = 10;
 
-  let points = [0];
+  let points = [];
+  let velocities = [velocity];
   let lastDisplacement = 0;
   let time = 0;
   for (; time < MAX_TIME; time += INVERSE_SAMPLE_RESOLUTION) {
     const acceleration = (-stiffness * x - friction * velocity) / mass;
     velocity += acceleration * INVERSE_SAMPLE_RESOLUTION;
+    velocities.push(velocity);
     const displacement = velocity * INVERSE_SAMPLE_RESOLUTION;
     x += displacement;
     points.push(1 - x);
@@ -246,7 +218,7 @@ const sampleSpring = ({
   }
   points.push(1);
 
-  return { duration: time * 1000, points };
+  return { duration: time * 1000, points, velocities };
 };
 
 const asSelf = <TOriginal, TCast>(
@@ -260,22 +232,46 @@ const useAnimation = (
   animate: AnimateOptions,
   variants: Variants | undefined,
 ) => {
-  const currentAnimSet = useRef<Animation[] | undefined>(undefined);
+  const currentAnims = useRef<
+    Record<
+      string,
+      | {
+          anim: Animation;
+          spring:
+            | undefined
+            | { duration: number; points: number[]; velocities: number[] };
+        }
+      | undefined
+    >
+  >({});
   const matchedAnimate = matchAgainstVariants(variants, animate);
-  // const state = useRef();
 
   useAnimateOptionsEffect(matchedAnimate, async () => {
+    const springVelocities: Record<string, number | undefined> = {};
     // cancel previous animation set and commit styles
-    for (const currentAnim of currentAnimSet.current ?? []) {
-      currentAnim.commitStyles();
-      currentAnim.cancel();
+    for (const [name, definition] of Object.entries(currentAnims.current)) {
+      if (definition) {
+        if (definition.spring) {
+          const progress =
+            definition.anim.effect?.getComputedTiming().progress ?? 1;
+
+          const lastIndex = Math.ceil(
+            (definition.spring.velocities.length - 1) * progress,
+          );
+
+          springVelocities[name] = definition.spring.velocities[lastIndex];
+        }
+
+        definition.anim.commitStyles();
+        definition.anim.cancel();
+      }
     }
 
     // clear previous animation set
-    currentAnimSet.current = [];
+    currentAnims.current = {};
 
     // split transition and properties
-    const { transition: _transition, ...properties } = matchedAnimate;
+    const { transition: transitionObj, ...properties } = matchedAnimate;
 
     // get current computed styles
     const computedStyles = window.getComputedStyle(elem.current);
@@ -293,12 +289,13 @@ const useAnimation = (
       // if the property is defined as keyframes, use them,
       // otherwise use the current value as the first keyframe.
       // if the first keyframe is null, use the current value as the first keyframe.
-      const _rawKeyframes = Array.isArray(valueOrKeyframes)
-        ? valueOrKeyframes[0] === null
-          ? [getCurrentValue(name), ...valueOrKeyframes.slice(1)]
-          : valueOrKeyframes
-        : [getCurrentValue(name), valueOrKeyframes];
-      const rawKeyframes = _rawKeyframes as (string | number)[];
+      const rawKeyframes = (
+        Array.isArray(valueOrKeyframes)
+          ? valueOrKeyframes[0] === null
+            ? [getCurrentValue(name), ...valueOrKeyframes.slice(1)]
+            : valueOrKeyframes
+          : [getCurrentValue(name), valueOrKeyframes]
+      ) as (string | number)[];
 
       // map non-css convenience values to css values,
       // e.g. 0 -> '0px' for translate
@@ -307,7 +304,7 @@ const useAnimation = (
       );
 
       const transition =
-        _transition?.[name as AnimatePropertyName] ?? _transition;
+        transitionObj?.[name as AnimatePropertyName] ?? transitionObj;
 
       let easing = asSelf(
         transition?.easing ?? 'ease-in-out',
@@ -315,17 +312,30 @@ const useAnimation = (
       );
 
       let duration: number;
+      let spring:
+        | undefined
+        | {
+            duration: number;
+            points: number[];
+            velocities: number[];
+          };
       if (transition?.easing === 'spring') {
         const stiffness = transition?.stiffness ?? 100;
         const friction = transition?.friction ?? 10;
         const mass = transition?.mass ?? 1;
-        const spring = sampleSpring({
-          stiffness,
-          friction,
-          mass,
-        });
-        easing = (t: number) =>
-          spring.points[Math.floor((spring.points.length - 1) * t)];
+
+        // calculate the current velocity of the previous string animation.
+        let startVelocity = -Math.abs(springVelocities[name] ?? 0);
+        const s = sampleSpring(
+          {
+            stiffness,
+            friction,
+            mass,
+          },
+          startVelocity,
+        );
+        spring = s;
+        easing = (t: number) => s.points[Math.floor((s.points.length - 1) * t)];
         duration = spring.duration;
       } else {
         duration = transition?.duration ?? DEFAULT_DURATION;
@@ -335,15 +345,11 @@ const useAnimation = (
         easing = `linear(${sampleEasingFn(easing, duration).join(',')})`;
       }
 
-      console.log(easing);
-
-      console.log(keyframes);
-
       // create and start animation
       const anim = elem.current.animate(
         keyframes.map((keyframe) => ({
           [name]: keyframe,
-          easing: typeof easing === 'function' ? 'linear' : easing,
+          easing: easing as Exclude<typeof easing, Function>,
         })),
         {
           duration,
@@ -351,15 +357,22 @@ const useAnimation = (
         },
       );
       // add animation to current animation set
-      currentAnimSet.current.push(anim);
+      currentAnims.current[name] = { anim, spring };
 
       // commit styles and cancel animation when finished
-      anim.finished
-        .then(() => {
+      (async () => {
+        let err = false;
+        try {
+          await anim.finished;
+          console.log('finished');
+        } catch (e) {
+          err = true;
+        }
+        if (!err) {
           anim.commitStyles();
           anim.cancel();
-        })
-        .catch(() => {});
+        }
+      })();
     }
   });
 };

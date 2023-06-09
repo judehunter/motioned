@@ -1,6 +1,7 @@
 import { Meta, StoryObj } from '@storybook/react';
 import { m } from 'motioned';
 import { RefObject, useEffect, useRef, useState } from 'react';
+import throttle from 'lodash.throttle';
 
 function useFollowPointer(ref: RefObject<HTMLElement>) {
   const [point, setPoint] = useState({ x: 0, y: 0 });
@@ -8,13 +9,13 @@ function useFollowPointer(ref: RefObject<HTMLElement>) {
   useEffect(() => {
     if (!ref.current) return;
 
-    const handlePointerMove = ({ clientX, clientY }: MouseEvent) => {
+    const handlePointerMove = throttle(({ clientX, clientY }: MouseEvent) => {
       const element = ref.current!;
 
       const x = clientX - element.offsetLeft - element.offsetWidth / 2;
       const y = clientY - element.offsetTop - element.offsetHeight / 2;
       setPoint({ x, y });
-    };
+    }, 0);
 
     window.addEventListener('pointermove', handlePointerMove);
 
@@ -31,13 +32,12 @@ const Component = () => {
   return (
     <m.div
       ref={ref}
-      style={{ translate: `${x}px ${y}px` }}
       animate={{
-        translate: `${x}px ${y}px`,
+        transform: `translateX(${x}px) translateY(${y}px)`,
         transition: {
           easing: 'spring',
-          friction: 10,
-          stiffness: 100,
+          friction: 3,
+          stiffness: 50,
           mass: 1,
         },
       }}
