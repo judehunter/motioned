@@ -13,8 +13,8 @@ type ValueOrKeyframes<T> = T | T[] | [null, ...T[]];
 
 type AnimateProperties = Partial<{
   opacity: ValueOrKeyframes<number>;
-  // x: ValueOrKeyframes<number | string>;
-  // y: ValueOrKeyframes<number | string>;
+  x: ValueOrKeyframes<number | string>;
+  y: ValueOrKeyframes<number | string>;
   rotate: ValueOrKeyframes<number | string>;
   translate: ValueOrKeyframes<string>;
   transform: ValueOrKeyframes<string>;
@@ -25,8 +25,8 @@ type AnimateProperties = Partial<{
 type AnimatePropertyName = keyof AnimateProperties;
 const possibleAnimatePropertyNames = [
   'opacity',
-  // 'x',
-  // 'y',
+  'x',
+  'y',
   'rotate',
   'translate',
   'transform',
@@ -103,15 +103,10 @@ const coerceToCssValue = (
   value: string | number,
 ): string => {
   if (typeof value === 'number') {
-    const match = {
-      opacity: () => `${value}`,
-      translate: () => `${value}`,
-      rotate: () => `${value}deg`,
-      scale: () => `${value}`,
-      width: () => `${value}px`,
-      transform: () => `${value}`,
-    };
-    return match[property]();
+    return match(property)
+      .with('rotate', () => `${value}deg`)
+      .with('width', () => `${value}px`)
+      .otherwise(() => `${value}`);
   }
   return value;
 };
@@ -226,6 +221,20 @@ const asSelf = <TOriginal, TCast>(
   cast: (original: TOriginal) => TCast,
 ) => original as any as TCast;
 
+(CSS as any).registerProperty({
+  name: '--x',
+  syntax: '<length-percentage>',
+  inherits: false,
+  initialValue: '0px',
+});
+
+(CSS as any).registerProperty({
+  name: '--y',
+  syntax: '<length-percentage>',
+  inherits: false,
+  initialValue: '0px',
+});
+
 const DEFAULT_DURATION = 500;
 const useAnimation = (
   elem: MutableRefObject<HTMLElement>,
@@ -270,9 +279,6 @@ const useAnimation = (
     // clear previous animation set
     currentAnims.current = {};
 
-    // split transition and properties
-    const { transition: transitionObj, ...properties } = matchedAnimate;
-
     // get current computed styles
     const computedStyles = window.getComputedStyle(elem.current);
 
@@ -283,9 +289,16 @@ const useAnimation = (
       return computedStyles.getPropertyValue(property);
     };
 
+    // split transition and properties
+    const { transition: transitionObj, ...properties } = matchedAnimate;
+
     // loop over properties and create animations,
     // one for each property
-    for (const [name, valueOrKeyframes] of Object.entries(properties)) {
+    for (const [_name, valueOrKeyframes] of Object.entries(properties)) {
+      const name = match(_name)
+        .with('x', () => '--x')
+        .with('y', () => '--y')
+        .otherwise(() => _name);
       // if the property is defined as keyframes, use them,
       // otherwise use the current value as the first keyframe.
       // if the first keyframe is null, use the current value as the first keyframe.
@@ -298,7 +311,7 @@ const useAnimation = (
       ) as (string | number)[];
 
       // map non-css convenience values to css values,
-      // e.g. 0 -> '0px' for translate
+      // e.g. 0 -> '0px' for width
       const keyframes = rawKeyframes.map((value) =>
         coerceToCssValue(name as AnimatePropertyName, value!),
       );
@@ -364,7 +377,6 @@ const useAnimation = (
         let err = false;
         try {
           await anim.finished;
-          console.log('finished');
         } catch (e) {
           err = true;
         }
