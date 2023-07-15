@@ -48,8 +48,8 @@ function useFollowPointer(
     const handlePointerMove = throttle(({ clientX, clientY }: MouseEvent) => {
       const element = ref.current!;
 
-      const x = clientX;
-      const y = clientY;
+      const x = clientX - element.offsetLeft - element.offsetWidth / 2;
+      const y = clientY - element.offsetTop - element.offsetHeight / 2;
       setPoint({ x, y });
       cb({ x, y });
     }, 0);
@@ -109,15 +109,12 @@ function useFollowPointer(
 //   return { duration: time * 1000, points, velocities };
 // };
 
-// const useAnimate = (from: number, to: number) => {
-//   const lastVelocity = useRef(0);
-
-// }
-
-const Component = () => {
-  const ref = useRef<HTMLDivElement>(null!);
-  const containerRef = useRef<HTMLDivElement>(null!);
-  const { x, y } = useFollowPointer(containerRef, () => {});
+const useAnimate = (
+  ref: any,
+  property: string,
+  to: number,
+  cb: (value: number) => void,
+) => {
   const lastVelocity = useRef(0);
   const raf = useRef<number | undefined>(undefined);
   useEffect(() => {
@@ -125,11 +122,11 @@ const Component = () => {
       cancelAnimationFrame(raf.current);
     }
     const spring = new SpringSimulation(
-      +getComputedStyle(ref.current).getPropertyValue('width').slice(0, -2),
+      +getComputedStyle(ref.current).getPropertyValue(property).slice(0, -2),
       lastVelocity.current,
-      x,
+      to,
       100,
-      10,
+      5,
       1,
     );
     let lastTime = performance.now();
@@ -143,14 +140,28 @@ const Component = () => {
         console.log('rest');
         return;
       }
-      ref.current.style.width = `${0 + position}px`;
+      cb(position);
       requestAnimationFrame(fn);
     });
-  }, [x]);
+  }, [to]);
+};
+
+const Component = () => {
+  const ref = useRef<HTMLDivElement>(null!);
+  const { x, y } = useFollowPointer(ref, () => {});
+  useAnimate(ref, '--x', x, (curX) =>
+    ref.current.style.setProperty('--x', `${curX}px`),
+  );
+  useAnimate(ref, '--y', y, (curY) =>
+    ref.current.style.setProperty('--y', `${curY}px`),
+  );
+
   return (
-    <div ref={containerRef}>
-      <div className="w-[10px] h-[40px] bg-green-500" ref={ref} />
-    </div>
+    <div
+      className="w-[40px] h-[40px] rounded-full bg-green-500"
+      style={{ transform: 'translateX(var(--x)) translateY(var(--y))' }}
+      ref={ref}
+    />
   );
 };
 
