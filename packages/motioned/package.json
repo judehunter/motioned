@@ -11,7 +11,7 @@
   "license": "MIT",
   "repository": "https://github.com/judehunter/motioned",
   "scripts": {
-    "build": "microbundle --jsx --tsconfig tsconfig.build.json",
+    "build": "microbundle --jsx React.createElement --tsconfig tsconfig.build.json",
     "dev": "microbundle watch --jsx React.createElement --tsconfig tsconfig.build.json"
   },
   "type": "module",
@@ -25,6 +25,9 @@
       "default": "./dist/index.modern.mjs"
     }
   },
+  "files": [
+    "./dist"
+  ],
   "types": "dist/index.d.ts",
   "engines": {
     "node": ">=14.15.0"

@@ -42,72 +42,72 @@ import { motion } from 'framer-motion';
 //     ></m.div>
 //   );
 // };
-const bounce = (x: number) => {
-  const n1 = 7.5625;
-  const d1 = 2.75;
+// const bounce = (x: number) => {
+//   const n1 = 7.5625;
+//   const d1 = 2.75;
 
-  if (x < 1 / d1) {
-    return n1 * x * x;
-  } else if (x < 2 / d1) {
-    return n1 * (x -= 1.5 / d1) * x + 0.75;
-  } else if (x < 2.5 / d1) {
-    return n1 * (x -= 2.25 / d1) * x + 0.9375;
-  } else {
-    return n1 * (x -= 2.625 / d1) * x + 0.984375;
-  }
-};
-function easeInOutElastic(x: number): number {
-  const c5 = (2 * Math.PI) / 4.5;
+//   if (x < 1 / d1) {
+//     return n1 * x * x;
+//   } else if (x < 2 / d1) {
+//     return n1 * (x -= 1.5 / d1) * x + 0.75;
+//   } else if (x < 2.5 / d1) {
+//     return n1 * (x -= 2.25 / d1) * x + 0.9375;
+//   } else {
+//     return n1 * (x -= 2.625 / d1) * x + 0.984375;
+//   }
+// };
+// function easeInOutElastic(x: number): number {
+//   const c5 = (2 * Math.PI) / 4.5;
 
-  return x === 0
-    ? 0
-    : x === 1
-    ? 1
-    : x < 0.5
-    ? -(Math.pow(2, 20 * x - 10) * Math.sin((20 * x - 11.125) * c5)) / 2
-    : (Math.pow(2, -20 * x + 10) * Math.sin((20 * x - 11.125) * c5)) / 2 + 1;
-}
-const sampleSpring = ({
-  stiffness,
-  friction,
-  mass,
-}: {
-  stiffness: number;
-  friction: number;
-  mass: number;
-}) => {
-  // x is normalized to be |a - b| = 1,
-  // since the spring is an easing function,
-  // and so it returns values 0 through 1.
-  let x = 1;
-  let velocity = 0;
+//   return x === 0
+//     ? 0
+//     : x === 1
+//     ? 1
+//     : x < 0.5
+//     ? -(Math.pow(2, 20 * x - 10) * Math.sin((20 * x - 11.125) * c5)) / 2
+//     : (Math.pow(2, -20 * x + 10) * Math.sin((20 * x - 11.125) * c5)) / 2 + 1;
+// }
+// const sampleSpring = ({
+//   stiffness,
+//   friction,
+//   mass,
+// }: {
+//   stiffness: number;
+//   friction: number;
+//   mass: number;
+// }) => {
+//   // x is normalized to be |a - b| = 1,
+//   // since the spring is an easing function,
+//   // and so it returns values 0 through 1.
+//   let x = 1;
+//   let velocity = 0;
 
-  // how often to sample, in seconds
-  const INVERSE_SAMPLE_RESOLUTION = 1 / 60;
-  const MAX_TIME = 10;
+//   // how often to sample, in seconds
+//   const INVERSE_SAMPLE_RESOLUTION = 1 / 60;
+//   const MAX_TIME = 10;
 
-  let points = [0];
-  let lastDisplacement = 0;
-  let time = 0;
-  for (; time < MAX_TIME; time += INVERSE_SAMPLE_RESOLUTION) {
-    const acceleration = (-stiffness * x - friction * velocity) / mass;
-    velocity += acceleration * INVERSE_SAMPLE_RESOLUTION;
-    const displacement = velocity * INVERSE_SAMPLE_RESOLUTION;
-    x += displacement;
-    points.push(1 - x);
+//   let points = [0];
+//   let lastDisplacement = 0;
+//   let time = 0;
+//   for (; time < MAX_TIME; time += INVERSE_SAMPLE_RESOLUTION) {
+//     const acceleration = (-stiffness * x - friction * velocity) / mass;
+//     velocity += acceleration * INVERSE_SAMPLE_RESOLUTION;
+//     const displacement = velocity * INVERSE_SAMPLE_RESOLUTION;
+//     x += displacement;
+//     points.push(1 - x);
 
-    // check if we've reached an inflection point,
-    // and break if it's close enough to the equilibrium
-    let CLOSE_ENOUGH = 0.01;
-    if (displacement * lastDisplacement < 0 && Math.abs(x) < CLOSE_ENOUGH) {
-      break;
-    }
-    lastDisplacement = displacement;
-  }
-  points.push(1);
+//     // check if we've reached an inflection point,
+//     // and break if it's close enough to the equilibrium
+//     let CLOSE_ENOUGH = 0.01;
+//     if (displacement * lastDisplacement < 0 && Math.abs(x) < CLOSE_ENOUGH) {
+//       break;
+//     }
+//     lastDisplacement = displacement;
+//   }
+//   points.push(1);
 
-  return { duration: time * 1000, points };
-};
+//   return { duration: time * 1000, points };
+// };
 // const Anim3 = () => {
 //   const [variant, setVariant] = useState<'large' | 'small'>('large');
 //   return (
@@ -140,76 +140,76 @@ const sampleSpring = ({
 //   );
 // };
 
-const Anim3 = () => {
-  const [variant, setVariant] = useState<'large' | 'small'>('small');
-  const spring = sampleSpring({ friction: 10, stiffness: 100, mass: 1 });
-  const easing = (t: number) =>
-    spring.points[Math.floor((spring.points.length - 1) * t)];
-  return (
-    <m.div
-      initial={variant}
-      animate={variant}
-      variants={{
-        small: {
-          width: '100px',
-          transition: {
-            easing,
-            duration: spring.duration,
-          },
-        },
-        large: {
-          width: '500px',
-          transition: {
-            easing,
-            duration: spring.duration,
-          },
-        },
-      }}
-      className="w-16 h-16 bg-green-500 rounded-tl-2xl"
-      onClick={() =>
-        setVariant((variant) => (variant === 'large' ? 'small' : 'large'))
-      }
-    >
-      {variant}
-    </m.div>
-  );
-};
+// const Anim3 = () => {
+//   const [variant, setVariant] = useState<'large' | 'small'>('small');
+//   const spring = sampleSpring({ friction: 10, stiffness: 100, mass: 1 });
+//   const easing = (t: number) =>
+//     spring.points[Math.floor((spring.points.length - 1) * t)];
+//   return (
+//     <m.div
+//       initial={variant}
+//       animate={variant}
+//       variants={{
+//         small: {
+//           width: '100px',
+//           transition: {
+//             easing,
+//             duration: spring.duration,
+//           },
+//         },
+//         large: {
+//           width: '500px',
+//           transition: {
+//             easing,
+//             duration: spring.duration,
+//           },
+//         },
+//       }}
+//       className="w-16 h-16 bg-green-500 rounded-tl-2xl"
+//       onClick={() =>
+//         setVariant((variant) => (variant === 'large' ? 'small' : 'large'))
+//       }
+//     >
+//       {variant}
+//     </m.div>
+//   );
+// };
 
-const Anim4 = () => {
-  const [variant, setVariant] = useState<'large' | 'small'>('small');
-  return (
-    <m.div
-      initial={variant}
-      animate={variant}
-      variants={{
-        small: {
-          width: '100px',
-          transition: {
-            easing: 'spring',
-            friction: 10,
-            stiffness: 100,
-            mass: 1,
-          },
-        },
-        large: {
-          width: '500px',
-          transition: {
-            easing: 'spring',
-            friction: 10,
-            stiffness: 100,
-            mass: 1,
-          },
-        },
-      }}
-      className="w-16 h-16 bg-green-500 rounded-tl-2xl"
-      onClick={() =>
-        setVariant((variant) => (variant === 'large' ? 'small' : 'large'))
-      }
-    >
-      {variant}
-    </m.div>
-  );
-};
+// const Anim4 = () => {
+//   const [variant, setVariant] = useState<'large' | 'small'>('small');
+//   return (
+//     <m.div
+//       initial={variant}
+//       animate={variant}
+//       variants={{
+//         small: {
+//           width: '100px',
+//           transition: {
+//             easing: 'spring',
+//             friction: 10,
+//             stiffness: 100,
+//             mass: 1,
+//           },
+//         },
+//         large: {
+//           width: '500px',
+//           transition: {
+//             easing: 'spring',
+//             friction: 10,
+//             stiffness: 100,
+//             mass: 1,
+//           },
+//         },
+//       }}
+//       className="w-16 h-16 bg-green-500 rounded-tl-2xl"
+//       onClick={() =>
+//         setVariant((variant) => (variant === 'large' ? 'small' : 'large'))
+//       }
+//     >
+//       {variant}
+//     </m.div>
+//   );
+// };
 
 const Anim3F = () => {
   const [variant, setVariant] = useState<'large' | 'small'>('small');
