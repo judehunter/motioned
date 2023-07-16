@@ -48,7 +48,7 @@ const sampleSpring = (
   const INVERSE_SAMPLE_RESOLUTION_MS = INVERSE_SAMPLE_RESOLUTION * 1000;
   const MAX_TIME = 10 * 1000;
 
-  let positions = [from];
+  let positions = [position];
   let velocities = [velocity];
   let time = 0;
   for (; time < MAX_TIME; time += INVERSE_SAMPLE_RESOLUTION_MS) {
@@ -71,7 +71,9 @@ const sampleSpring = (
   }
   positions.push(to);
 
-  const mappedPositions = positions.map((p) => (p - from) / (to - from));
+  const mappedPositions = positions.map((p) =>
+    to === from ? 1 : (p - from) / (to - from),
+  );
 
   return { duration: time, positions, velocities, mappedPositions };
 };
@@ -94,20 +96,19 @@ const useAnimate = (
     const from = getComputedStyle(ref.current).getPropertyValue(property);
     const normalizedTo = measurePropertyForElement(ref.current, property, to);
 
-    console.log({ lastVelocity });
     const spring = sampleSpring(
       {
         from: +from.slice(0, -2),
         to: +to.slice(0, -2),
         velocity: lastVelocity,
       },
-      { stiffness: 50, friction: 5, mass: 10 },
+      { stiffness: 100, friction: 5, mass: 1 },
     );
     console.log({
       from,
       to,
       normalizedTo,
-      lastVelocity: -lastVelocity,
+      lastVelocity,
       progress,
       spring,
     });
@@ -161,15 +162,15 @@ const measurePropertyForElement = (
 
 const Component = () => {
   const ref = useRef<HTMLDivElement>(null!);
-  // const { x, y } = useFollowPointer(ref, () => {});
-  const [x, setX] = useState(400);
-  useAnimate(ref, 'width', `${x}px`);
-  useEffect(() => {
-    setTimeout(() => {
-      console.log('swap');
-      setX(300);
-    }, 2000);
-  }, []);
+  const { x, y } = useFollowPointer(ref, () => {});
+  // const [x, setX] = useState(400);
+  useAnimate(ref, '--x', `${x}px`);
+  // useEffect(() => {
+  //   setTimeout(() => {
+  //     console.log('swap');
+  //     setX(300);
+  //   }, 2000);
+  // }, []);
 
   return (
     <div
