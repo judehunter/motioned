@@ -2,7 +2,6 @@ import { Meta, StoryObj } from '@storybook/react';
 import throttle from 'lodash.throttle';
 import { RefObject, useEffect, useRef, useState } from 'react';
 
-
 function useFollowPointer(
   ref: RefObject<HTMLElement>,
   cb: (point: { x: number; y: number }) => void,
@@ -78,6 +77,15 @@ const sampleSpring = (
   return { duration: time, positions, velocities, mappedPositions };
 };
 
+const lerpVelocity = (floatIndex: number, velocities: number[]) => {
+  const lowestVelocity = velocities[Math.floor(floatIndex)] ?? 0;
+  const highestVelocity = velocities[Math.ceil(floatIndex)] ?? 0;
+
+  const fraction = floatIndex - Math.floor(floatIndex);
+
+  return lowestVelocity + (highestVelocity - lowestVelocity) * fraction;
+};
+
 const useAnimate = (
   ref: { current: HTMLElement },
   property: string,
@@ -93,10 +101,11 @@ const useAnimate = (
       last.current?.anim.commitStyles();
       const progress =
         last.current?.anim.effect?.getComputedTiming().progress ?? 1;
-      const lastVelocity =
-        last.current?.velocities[
-          Math.floor((last.current?.velocities.length - 1) * progress)
-        ] ?? 0;
+      const lastVelocity = lerpVelocity(
+        ((last.current?.velocities.length ?? 0) - 1) * progress,
+        last.current?.velocities ?? [],
+      );
+
       // last.current?.anim.cancel();
       const from = getComputedStyle(ref.current).getPropertyValue(property);
       const normalizedTo = to; //measurePropertyForElement(ref.current, property, to);
@@ -109,14 +118,14 @@ const useAnimate = (
         },
         { stiffness: 100, friction: 5, mass: 1 },
       );
-      console.log({
-        from,
-        to,
-        normalizedTo,
-        lastVelocity,
-        progress,
-        spring,
-      });
+      // console.log({
+      //   from,
+      //   to,
+      //   normalizedTo,
+      //   lastVelocity,
+      //   progress,
+      //   spring,
+      // });
       const anim = ref.current.animate(
         [
           {
