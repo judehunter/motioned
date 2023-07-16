@@ -48,8 +48,8 @@ const sampleSpring = (
   const INVERSE_SAMPLE_RESOLUTION_MS = INVERSE_SAMPLE_RESOLUTION * 1000;
   const MAX_TIME = 10 * 1000;
 
-  let positions = [position];
-  let velocities = [velocity];
+  let positions = [from];
+  let velocities = [];
   let time = 0;
   for (; time < MAX_TIME; time += INVERSE_SAMPLE_RESOLUTION_MS) {
     const displacement = position - to;
@@ -84,49 +84,57 @@ const useAnimate = (
   to: string,
 ) => {
   const last = useRef<{ anim: Animation; velocities: number[] } | null>(null);
+  const raf = useRef<number | undefined>();
   useEffect(() => {
-    last.current?.anim.commitStyles();
-    const progress =
-      last.current?.anim.effect?.getComputedTiming().progress ?? 1;
-    const lastVelocity =
-      last.current?.velocities[
-        Math.floor((last.current?.velocities.length - 1) * progress)
-      ] ?? 0;
-    last.current?.anim.cancel();
-    const from = getComputedStyle(ref.current).getPropertyValue(property);
-    const normalizedTo = measurePropertyForElement(ref.current, property, to);
+    if (raf.current) {
+      return;
+    }
+    raf.current = requestAnimationFrame(() => {
+      last.current?.anim.commitStyles();
+      const progress =
+        last.current?.anim.effect?.getComputedTiming().progress ?? 1;
+      const lastVelocity =
+        last.current?.velocities[
+          Math.floor((last.current?.velocities.length - 1) * progress)
+        ] ?? 0;
+      // last.current?.anim.cancel();
+      const from = getComputedStyle(ref.current).getPropertyValue(property);
+      const normalizedTo = to; //measurePropertyForElement(ref.current, property, to);
 
-    const spring = sampleSpring(
-      {
-        from: +from.slice(0, -2),
-        to: +to.slice(0, -2),
-        velocity: lastVelocity,
-      },
-      { stiffness: 100, friction: 5, mass: 1 },
-    );
-    console.log({
-      from,
-      to,
-      normalizedTo,
-      lastVelocity,
-      progress,
-      spring,
+      const spring = sampleSpring(
+        {
+          from: +from.slice(0, -2),
+          to: +to.slice(0, -2),
+          velocity: lastVelocity,
+        },
+        { stiffness: 100, friction: 5, mass: 1 },
+      );
+      console.log({
+        from,
+        to,
+        normalizedTo,
+        lastVelocity,
+        progress,
+        spring,
+      });
+      const anim = ref.current.animate(
+        [
+          {
+            [property]: from,
+            easing: `linear(${spring.mappedPositions.join(',')})`,
+          },
+          {
+            [property]: to,
+            easing: `linear(${spring.mappedPositions.join(',')})`,
+          },
+        ],
+        { fill: 'forwards', duration: spring.duration },
+      );
+
+      last.current = { anim, velocities: spring.velocities };
+
+      raf.current = undefined;
     });
-    const anim = ref.current.animate(
-      [
-        {
-          [property]: from,
-          easing: `linear(${spring.mappedPositions.join(',')})`,
-        },
-        {
-          [property]: to,
-          easing: `linear(${spring.mappedPositions.join(',')})`,
-        },
-      ],
-      { fill: 'forwards', duration: spring.duration },
-    );
-
-    last.current = { anim, velocities: spring.velocities };
   }, [to]);
 };
 
@@ -165,6 +173,7 @@ const Component = () => {
   const { x, y } = useFollowPointer(ref, () => {});
   // const [x, setX] = useState(400);
   useAnimate(ref, '--x', `${x}px`);
+  useAnimate(ref, '--y', `${y}px`);
   // useEffect(() => {
   //   setTimeout(() => {
   //     console.log('swap');
