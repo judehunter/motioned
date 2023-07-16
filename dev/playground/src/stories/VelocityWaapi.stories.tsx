@@ -78,12 +78,12 @@ const sampleSpring = (
 };
 
 const lerpVelocity = (floatIndex: number, velocities: number[]) => {
-  const lowestVelocity = velocities[Math.floor(floatIndex)] ?? 0;
-  const highestVelocity = velocities[Math.ceil(floatIndex)] ?? 0;
+  const minV = velocities[Math.floor(floatIndex)] ?? 0;
+  const maxV = velocities[Math.ceil(floatIndex)] ?? 0;
 
   const fraction = floatIndex - Math.floor(floatIndex);
 
-  return lowestVelocity + (highestVelocity - lowestVelocity) * fraction;
+  return -fraction * minV + fraction * maxV + minV;
 };
 
 const useAnimate = (
@@ -101,10 +101,12 @@ const useAnimate = (
       last.current?.anim.commitStyles();
       const progress =
         last.current?.anim.effect?.getComputedTiming().progress ?? 1;
-      const lastVelocity = lerpVelocity(
-        ((last.current?.velocities.length ?? 0) - 1) * progress,
-        last.current?.velocities ?? [],
-      );
+      const lastVelocity = last.current?.velocities.length
+        ? lerpVelocity(
+            (last.current?.velocities.length - 1) * progress,
+            last.current?.velocities,
+          )
+        : 0;
 
       // last.current?.anim.cancel();
       const from = getComputedStyle(ref.current).getPropertyValue(property);
