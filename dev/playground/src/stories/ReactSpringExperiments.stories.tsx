@@ -109,7 +109,7 @@ function useFollowPointer(
 //   return { duration: time * 1000, points, velocities };
 // };
 
-const useAnimate = (
+export const useAnimate = (
   ref: any,
   property: string,
   to: number,
