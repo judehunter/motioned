@@ -44,7 +44,9 @@ const Component = () => {
         y,
       },
       {
-        easing: spring(),
+        easing: spring({
+          damping: 5,
+        }),
       },
     );
   });
