@@ -1,4 +1,4 @@
-import { Generator } from "./generators.js";
+import { Generator } from './generators.js';
 
 /*
   Inspired by motion-one (MIT License)
@@ -47,6 +47,7 @@ export const makeSpringGenerator = (
       );
     };
   }
+  // TODO: Overdamped spring
 
   return ((t: number) => {
     const position = getPosition(t);

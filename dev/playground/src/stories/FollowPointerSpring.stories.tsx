@@ -25,7 +25,15 @@ function useFollowPointer(ref: RefObject<HTMLElement>) {
   return point;
 }
 
-const Component = () => {
+const Component = ({
+  stiffness,
+  friction,
+  mass,
+}: {
+  stiffness: number;
+  friction: number;
+  mass: number;
+}) => {
   const ref = useRef<HTMLDivElement>(null);
   const { x, y } = useFollowPointer(ref);
 
@@ -40,20 +48,36 @@ const Component = () => {
         y: `${y}px`,
         transition: {
           easing: 'spring',
-          friction: 5,
+          stiffness,
+          friction,
+          mass,
         },
       }}
-      className="w-16 h-16 bg-blue-500 rounded-full"
+      className="w-32 h-32 bg-blue-500 rounded-full"
     />
   );
 };
 
 const meta = {
-  title: 'Example/Follow Pointer Spring',
+  title: 'Spring/Follow Pointer',
   component: Component,
 } satisfies Meta<typeof Component>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Motioned: Story = {};
+export const Swing: Story = {
+  args: {
+    stiffness: 100,
+    friction: 5,
+    mass: 1,
+  },
+};
+
+export const Sluggish: Story = {
+  args: {
+    stiffness: 50,
+    friction: 3,
+    mass: 2,
+  },
+};

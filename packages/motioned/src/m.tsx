@@ -1,10 +1,20 @@
+import { matchAgainstVariants, sampleEasingFn } from './utils.js';
+import {
+  AnimateOptions,
+  AnimateProperties,
+  AnimatePropertyName,
+  NoInfer,
+  Variants,
+  animatePropertiesToStyle,
+  coerceToCssValue,
+  useAnimateOptionsEffect,
+} from './utils.js';
 import { asSelf } from './utils.js';
 import React, {
   ComponentProps,
   ForwardedRef,
   MutableRefObject,
   forwardRef,
-  useEffect,
   useMemo,
   useRef,
 } from 'react';
@@ -12,161 +22,6 @@ import { match } from 'ts-pattern';
 import { registerCSSProperties } from './utils.js';
 import { Generator, sampleGenerator } from './generators/generators.js';
 import { makeSpringGenerator } from './generators/spring.js';
-
-type ValueOrKeyframes<T> = T | T[] | [null, ...T[]];
-
-type AnimateProperties = Partial<{
-  opacity: ValueOrKeyframes<number>;
-  x: ValueOrKeyframes<number | string>;
-  y: ValueOrKeyframes<number | string>;
-  rotate: ValueOrKeyframes<number | string>;
-  translate: ValueOrKeyframes<string>;
-  transform: ValueOrKeyframes<string>;
-  scale: ValueOrKeyframes<number>;
-  width: ValueOrKeyframes<number | string>;
-}>;
-
-type AnimatePropertyName = keyof AnimateProperties;
-const possibleAnimatePropertyNames = [
-  'opacity',
-  'x',
-  'y',
-  'rotate',
-  'translate',
-  'transform',
-  'scale',
-  'width',
-] as const;
-
-type SpringTransition = {
-  easing: 'spring';
-  stiffness?: number;
-  friction?: number;
-  mass?: number;
-};
-
-type Transition =
-  | Partial<{
-      duration: number;
-      delay: number;
-      easing:
-        | 'linear'
-        | 'ease'
-        | 'ease-out'
-        | 'ease-in'
-        | 'ease-in-out'
-        | EasingFn;
-    }>
-  | SpringTransition;
-
-export type AnimateOptions = AnimateProperties & {
-  transition?: Transition & Partial<Record<AnimatePropertyName, Transition>>;
-};
-
-type EasingFn = (t: number) => number;
-
-const animateOptionsEqual = (
-  a: AnimateOptions,
-  b: AnimateOptions | undefined,
-) => {
-  if (b === undefined) {
-    return false;
-  }
-  for (const prop of possibleAnimatePropertyNames) {
-    if (Array.isArray(a[prop]) && Array.isArray(b[prop])) {
-    }
-    if (Array.isArray(a[prop]) !== Array.isArray(b[prop])) {
-      return false;
-    }
-    if (a[prop] !== b[prop]) {
-      return false;
-    }
-  }
-  return true;
-};
-
-function useAnimateOptionsEffect(
-  opts: AnimateOptions,
-  cb: (prev: AnimateOptions | undefined) => any,
-) {
-  const ref = useRef<AnimateOptions | undefined>();
-  const prev = useRef<AnimateOptions | undefined>();
-
-  if (!animateOptionsEqual(opts, ref.current)) {
-    prev.current = ref.current;
-    ref.current = opts;
-  }
-
-  useEffect(() => {
-    cb(prev.current);
-  }, [ref.current]);
-}
-
-const coerceToCssValue = (
-  property: AnimatePropertyName,
-  value: string | number,
-): string => {
-  if (typeof value === 'number') {
-    return match(property)
-      .with('rotate', () => `${value}deg`)
-      .with('width', () => `${value}px`)
-      .otherwise(() => `${value}`);
-  }
-  return value;
-};
-
-const animatePropertiesToStyle = (properties: AnimateProperties) => {
-  return Object.fromEntries(
-    Object.entries(properties)
-      .map(([name, valueOrKeyframes]) => {
-        const value = Array.isArray(valueOrKeyframes)
-          ? valueOrKeyframes[0]
-          : valueOrKeyframes;
-        if (value === null) {
-          return undefined;
-        }
-        return [name, coerceToCssValue(name as AnimatePropertyName, value)];
-      })
-      .filter((x): x is [AnimatePropertyName, string] => x !== undefined),
-  );
-};
-
-type NoInfer<T> = [T][T extends any ? 0 : never];
-
-type Variants<TVariants extends string = string> = Record<
-  TVariants,
-  AnimateOptions
->;
-
-const matchAgainstVariants = <T extends string | AnimateOptions>(
-  variants: Variants | undefined,
-  key: T,
-) => {
-  if (typeof key === 'string') {
-    if (variants === undefined) {
-      throw new Error('Variants not defined');
-    }
-    if (variants[key] === undefined) {
-      throw new Error(`Variant "${key}" not found`);
-    }
-    return variants[key];
-  } else {
-    return key as AnimateOptions;
-  }
-};
-
-/** sample points per second */
-const SAMPLE_RESOLUTION = 60;
-
-const sampleEasingFn = (easingFn: EasingFn, duration: number) => {
-  const totalPoints = SAMPLE_RESOLUTION * (duration / 1000);
-  let points = [];
-  for (let progress = 0; progress < 1; progress += 1 / totalPoints) {
-    points.push(easingFn(progress));
-  }
-  points.push(easingFn(1));
-  return points;
-};
 
 registerCSSProperties();
 
@@ -218,7 +73,7 @@ const useAnimation = (
         // let currentDomValue: undefined | string = undefined;
 
         const currentAnim = currentAnims.current[name];
-        console.log(currentAnim);
+
         if (currentAnim) {
           currentAnim.anim.commitStyles();
 
@@ -237,7 +92,7 @@ const useAnimation = (
             }
           }
 
-          // currentAnim.anim.cancel();
+          currentAnim.anim.cancel();
         }
 
         // if the property is defined as keyframes, use them,
@@ -313,18 +168,18 @@ const useAnimation = (
         // add animation to current animation set
         currentAnims.current[name] = { anim, generator };
         // commit styles and cancel animation when finished
-        // (async () => {
-        //   let err = false;
-        //   try {
-        //     await anim.finished;
-        //   } catch (e) {
-        //     err = true;
-        //   }
-        //   if (!err) {
-        //     anim.commitStyles();
-        //     anim.cancel();
-        //   }
-        // })();
+        (async () => {
+          let err = false;
+          try {
+            await anim.finished;
+          } catch (e) {
+            err = true;
+          }
+          if (!err) {
+            anim.commitStyles();
+            anim.cancel();
+          }
+        })();
       }
     };
 
