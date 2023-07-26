@@ -25,42 +25,59 @@ function useFollowPointer(ref: RefObject<HTMLElement>) {
   return point;
 }
 
-const Component = () => {
+const Component = ({
+  stiffness,
+  friction,
+  mass,
+}: {
+  stiffness: number;
+  friction: number;
+  mass: number;
+}) => {
   const ref = useRef<HTMLDivElement>(null);
   const { x, y } = useFollowPointer(ref);
 
   return (
     <m.div
       ref={ref}
+      style={{
+        transform: `translateX(var(--x)) translateY(var(--y))`,
+      }}
       animate={{
-        transform: `translateX(${x}px) translateY(${y}px)`,
+        x: `${x}px`,
+        y: `${y}px`,
         transition: {
           easing: 'spring',
-          friction: 3,
-          stiffness: 50,
-          mass: 1,
+          stiffness,
+          friction,
+          mass,
         },
       }}
-      className="w-16 h-16 bg-blue-500 rounded-full"
+      className="w-32 h-32 bg-blue-500 rounded-full"
     />
   );
 };
 
 const meta = {
-  title: 'Example/Follow Pointer Spring',
+  title: 'Spring/Follow Pointer',
   component: Component,
-  tags: ['autodocs'],
-  argTypes: {
-    backgroundColor: { control: 'color' },
-  },
 } satisfies Meta<typeof Component>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Primary: Story = {
+export const Swing: Story = {
   args: {
-    primary: true,
-    label: 'Button',
+    stiffness: 100,
+    friction: 5,
+    mass: 1,
+  },
+};
+
+export const Sluggish: Story = {
+  args: {
+    stiffness: 50,
+    friction: 3,
+    mass: 2,
   },
 };
