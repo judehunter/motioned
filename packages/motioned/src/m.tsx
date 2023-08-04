@@ -1,4 +1,9 @@
-import { matchAgainstVariants, sampleEasingFn } from './utils.js';
+import {
+  extractNumberFromCssValue,
+  matchAgainstVariants,
+  matchAnimatePropertyNameToCssPropertyName,
+  sampleEasingFn,
+} from './utils.js';
 import {
   AnimateOptions,
   AnimateProperties,
@@ -64,10 +69,9 @@ const useAnimation = (
       // loop over properties and create animations,
       // one for each property
       for (const [_name, valueOrKeyframes] of Object.entries(properties)) {
-        const name = match(_name)
-          .with('x', () => '--x')
-          .with('y', () => '--y')
-          .otherwise(() => _name);
+        const name = matchAnimatePropertyNameToCssPropertyName(
+          _name as AnimatePropertyName,
+        );
 
         let lastVelocity = 0;
         // let currentDomValue: undefined | string = undefined;
@@ -128,8 +132,8 @@ const useAnimation = (
           const friction = transition?.friction ?? 10;
           const mass = transition?.mass ?? 1;
 
-          const from = +`${rawKeyframes[0]}`.slice(0, -2);
-          const to = +`${rawKeyframes[1]}`.slice(0, -2);
+          const from = extractNumberFromCssValue(`${rawKeyframes[0]}`);
+          const to = extractNumberFromCssValue(`${rawKeyframes[1]}`);
 
           generator = makeSpringGenerator(
             {
@@ -231,6 +235,8 @@ const mDiv = <TVariants extends string>(
       style={{
         ...rest.style,
         ...memodMatchedInitial,
+        transform:
+          'translate(var(--x), var(--y)) rotate(var(--rotate-z)) scale(var(--scale-x), var(--scale-y))',
       }}
     />
   );
