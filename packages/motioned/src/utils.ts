@@ -266,24 +266,3 @@ export const matchAnimatePropertyNameToCssPropertyName = (
     .with('scaleZ', () => '--scale-z')
     .otherwise(() => name);
 };
-
-// export const getTransformString = (transforms: string[]) => {
-//   return transforms
-//     .map((transform) =>
-//       match(transform as AnimatePropertyName)
-//         .with('x', () => 'translateX(var(--x))')
-//         .with('y', () => 'translateY(var(--y))')
-//         .with('rotate', () => 'rotate(var(--rotate))')
-//         .with('rotateX', () => 'rotateX(var(--rotate-x))')
-//         .with('rotateY', () => 'rotateY(var(--rotate-y))')
-//         .with('rotateZ', () => 'rotateZ(var(--rotate-z))')
-//         .with('scale', () => 'scale(var(--scale))')
-//         .with('scaleX', () => 'scaleX(var(--scale-x))')
-//         .with('scaleY', () => 'scaleY(var(--scale-y))')
-//         .with('scaleZ', () => 'scaleZ(var(--scale-z))')
-//         .otherwise(() => {
-//           throw new Error('Unknown transform');
-//         }),
-//     )
-//     .join(' ');
-// };
