@@ -40,9 +40,6 @@ const Component = ({
   return (
     <m.div
       ref={ref}
-      style={{
-        transform: `translateX(var(--x)) translateY(var(--y))`,
-      }}
       animate={{
         x: `${x}px`,
         y: `${y}px`,

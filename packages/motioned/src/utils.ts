@@ -16,6 +16,55 @@ export const registerCSSProperties = () => {
       inherits: false,
       initialValue: '0px',
     });
+
+    (CSS as any).registerProperty({
+      name: '--z',
+      syntax: '<length-percentage>',
+      inherits: false,
+      initialValue: '0px',
+    });
+
+    (CSS as any).registerProperty({
+      name: '--rotate-x',
+      syntax: '<angle>',
+      inherits: false,
+      initialValue: '0deg',
+    });
+
+    (CSS as any).registerProperty({
+      name: '--rotate-y',
+      syntax: '<angle>',
+      inherits: false,
+      initialValue: '0deg',
+    });
+
+    (CSS as any).registerProperty({
+      name: '--rotate-z',
+      syntax: '<angle>',
+      inherits: false,
+      initialValue: '0deg',
+    });
+
+    (CSS as any).registerProperty({
+      name: '--scale-x',
+      syntax: '<number>',
+      inherits: false,
+      initialValue: '1',
+    });
+
+    (CSS as any).registerProperty({
+      name: '--scale-y',
+      syntax: '<number>',
+      inherits: false,
+      initialValue: '1',
+    });
+
+    (CSS as any).registerProperty({
+      name: '--scale-z',
+      syntax: '<number>',
+      inherits: false,
+      initialValue: '1',
+    });
   } catch (e) {}
 };
 
@@ -30,7 +79,9 @@ export const coerceToCssValue = (
 ): string => {
   if (typeof value === 'number') {
     return match(property)
-      .with('rotate', () => `${value}deg`)
+      .with('rotateX', () => `${value}deg`)
+      .with('rotateY', () => `${value}deg`)
+      .with('rotateZ', () => `${value}deg`)
       .with('width', () => `${value}px`)
       .otherwise(() => `${value}`);
   }
@@ -43,10 +94,13 @@ export type AnimateProperties = Partial<{
   opacity: ValueOrKeyframes<number>;
   x: ValueOrKeyframes<number | string>;
   y: ValueOrKeyframes<number | string>;
-  rotate: ValueOrKeyframes<number | string>;
-  translate: ValueOrKeyframes<string>;
-  transform: ValueOrKeyframes<string>;
-  scale: ValueOrKeyframes<number>;
+  z: ValueOrKeyframes<number | string>;
+  rotateX: ValueOrKeyframes<number | string>;
+  rotateY: ValueOrKeyframes<number | string>;
+  rotateZ: ValueOrKeyframes<number | string>;
+  scaleX: ValueOrKeyframes<number>;
+  scaleY: ValueOrKeyframes<number>;
+  scaleZ: ValueOrKeyframes<number>;
   width: ValueOrKeyframes<number | string>;
 }>;
 
@@ -55,10 +109,13 @@ const possibleAnimatePropertyNames = [
   'opacity',
   'x',
   'y',
-  'rotate',
-  'translate',
-  'transform',
-  'scale',
+  'z',
+  'rotateX',
+  'rotateY',
+  'rotateZ',
+  'scaleX',
+  'scaleY',
+  'scaleZ',
   'width',
 ] as const;
 
@@ -129,7 +186,11 @@ export const useAnimateOptionsEffect = (
 export const animatePropertiesToStyle = (properties: AnimateProperties) => {
   return Object.fromEntries(
     Object.entries(properties)
-      .map(([name, valueOrKeyframes]) => {
+      .map(([_name, valueOrKeyframes]) => {
+        const name = matchAnimatePropertyNameToCssPropertyName(
+          _name as AnimatePropertyName,
+        );
+
         const value = Array.isArray(valueOrKeyframes)
           ? valueOrKeyframes[0]
           : valueOrKeyframes;
@@ -165,7 +226,7 @@ export const matchAgainstVariants = <T extends string | AnimateOptions>(
     return key as AnimateOptions;
   }
 };
- /** sample points per second */
+/** sample points per second */
 const SAMPLE_RESOLUTION = 60;
 
 export const sampleEasingFn = (easingFn: EasingFn, duration: number) => {
@@ -177,3 +238,52 @@ export const sampleEasingFn = (easingFn: EasingFn, duration: number) => {
   points.push(easingFn(1));
   return points;
 };
+
+export const extractNumberFromCssValue = (value: string) => {
+  const match = value.match(/^(-?\d*(?:\.\d+)?)(?:.*)$/);
+  if (match === null) {
+    throw new Error(`Could not extract number from css value "${value}"`);
+  }
+  return parseFloat(match[1]);
+};
+
+/**
+ * Converts shorthand properties to the actual css property name.
+ * Or otherwise returns unchanged.
+ */
+export const matchAnimatePropertyNameToCssPropertyName = (
+  name: AnimatePropertyName,
+) => {
+  return match(name as AnimatePropertyName)
+    .with('x', () => '--x')
+    .with('y', () => '--y')
+    .with('z', () => '--z')
+    .with('rotateX', () => '--rotate-x')
+    .with('rotateY', () => '--rotate-y')
+    .with('rotateZ', () => '--rotate-z')
+    .with('scaleX', () => '--scale-x')
+    .with('scaleY', () => '--scale-y')
+    .with('scaleZ', () => '--scale-z')
+    .otherwise(() => name);
+};
+
+// export const getTransformString = (transforms: string[]) => {
+//   return transforms
+//     .map((transform) =>
+//       match(transform as AnimatePropertyName)
+//         .with('x', () => 'translateX(var(--x))')
+//         .with('y', () => 'translateY(var(--y))')
+//         .with('rotate', () => 'rotate(var(--rotate))')
+//         .with('rotateX', () => 'rotateX(var(--rotate-x))')
+//         .with('rotateY', () => 'rotateY(var(--rotate-y))')
+//         .with('rotateZ', () => 'rotateZ(var(--rotate-z))')
+//         .with('scale', () => 'scale(var(--scale))')
+//         .with('scaleX', () => 'scaleX(var(--scale-x))')
+//         .with('scaleY', () => 'scaleY(var(--scale-y))')
+//         .with('scaleZ', () => 'scaleZ(var(--scale-z))')
+//         .otherwise(() => {
+//           throw new Error('Unknown transform');
+//         }),
+//     )
+//     .join(' ');
+// };
