@@ -36,7 +36,6 @@ const Component = ({
 };
 
 const meta = {
-  title: 'Spring/RotateAndScale',
   component: Component,
 } satisfies Meta<typeof Component>;
 
