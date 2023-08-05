@@ -144,6 +144,8 @@ const useAnimation = (
               stiffness,
               friction,
               mass,
+              restDistance: transition.restDistance,
+              restVelocity: transition.restVelocity,
             },
           );
           const s = sampleGenerator(generator, from, to);

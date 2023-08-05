@@ -48,6 +48,8 @@ const Component = ({
           stiffness,
           friction,
           mass,
+          restDistance: 0,
+          restVelocity: 0,
         },
       }}
       className="w-32 h-32 bg-blue-500 rounded-full"
@@ -56,7 +58,6 @@ const Component = ({
 };
 
 const meta = {
-  title: 'Spring/Follow Pointer',
   component: Component,
 } satisfies Meta<typeof Component>;
 

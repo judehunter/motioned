@@ -80,7 +80,7 @@ export const asSelf = <TOriginal, TCast>(
 const coerceMatchers = [
   [['rotateX', 'rotateY', 'rotateZ'], (value: number) => `${value}deg`],
   [
-    ['width', 'height', 'top', 'left', 'right', 'bottom'],
+    ['width', 'height', 'top', 'left', 'right', 'bottom', 'x', 'y', 'z'],
     (value: number) => `${value}px`,
   ],
 ] as const;
@@ -128,12 +128,15 @@ type SingleAnimateProperties = CSSType.StandardProperties & {
 /**
  * Adds keyframes support to all properties, as well as coercing.
  */
-export type AnimateProperties = Partial<{
-  [K in keyof SingleAnimateProperties]: ValueOrKeyframes<
-    | SingleAnimateProperties[K]
-    | (K extends CoerciblePropertyNames ? number : never)
-  >;
-}>;
+export type AnimateProperties = Omit<
+  Partial<{
+    [K in keyof SingleAnimateProperties]: ValueOrKeyframes<
+      | SingleAnimateProperties[K]
+      | (K extends CoerciblePropertyNames ? number : never)
+    >;
+  }>,
+  `transition${string}`
+>;
 
 export type AnimatePropertyName = keyof AnimateProperties;
 
@@ -142,6 +145,8 @@ export type SpringTransition = {
   stiffness?: number;
   friction?: number;
   mass?: number;
+  restDistance?: number;
+  restVelocity?: number;
 };
 
 export type Transition =
@@ -158,7 +163,7 @@ export type Transition =
     }>
   | SpringTransition;
 
-export type AnimateOptions = Omit<AnimateProperties, 'transition'> & {
+export type AnimateOptions = AnimateProperties & {
   transition?: Transition & Partial<Record<AnimatePropertyName, Transition>>;
 };
 
@@ -217,7 +222,7 @@ export const animatePropertiesToStyle = (properties: AnimateProperties) => {
         if (value === null) {
           return undefined;
         }
-        return [name, coerceToCssValue(name as AnimatePropertyName, value)];
+        return [name, coerceToCssValue(_name as AnimatePropertyName, value)];
       })
       .filter((x): x is [AnimatePropertyName, string] => x !== undefined),
   );
