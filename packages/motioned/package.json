@@ -39,5 +39,8 @@
   "peerDependencies": {
     "react": "^18.0.0",
     "react-dom": "^18.0.0"
+  },
+  "dependencies": {
+    "csstype": "^3.1.2"
   }
 }

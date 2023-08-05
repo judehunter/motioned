@@ -13,12 +13,14 @@ const Component = ({
   return (
     <m.div
       initial={{
-        rotateZ: '0deg',
+        opacity: 1,
+        rotateZ: 0,
         scaleX: 0,
         scaleY: 0,
       }}
       animate={{
-        rotateZ: '180deg',
+        opacity: 1,
+        rotateZ: 180,
         scaleX: 1,
         scaleY: 1,
         transition: {
