@@ -9,8 +9,8 @@ export const makeSpringGenerator = (
     stiffness,
     friction,
     mass,
-    restDistance = 0.05,
-    restVelocity = 0.1,
+    restDistance = 0.005,
+    restVelocity = 0.005,
   }: {
     stiffness: number;
     friction: number;

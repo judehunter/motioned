@@ -1,5 +1,6 @@
-import { useRef, useEffect } from 'react';
-import { match } from 'ts-pattern';
+import React, { useRef, useEffect } from 'react';
+import { P, match } from 'ts-pattern';
+import type * as CSSType from 'csstype';
 
 export const registerCSSProperties = () => {
   try {
@@ -73,16 +74,33 @@ export const asSelf = <TOriginal, TCast>(
   cast: (original: TOriginal) => TCast,
 ) => original as any as TCast;
 
+// This is explicitly defined here so that we can use all these properties
+// in the `AnimateProperties` type.
+// All of these properties can be set to a number in `animate`.
+const coerceMatchers = [
+  [['rotateX', 'rotateY', 'rotateZ'], (value: number) => `${value}deg`],
+  [
+    ['width', 'height', 'top', 'left', 'right', 'bottom'],
+    (value: number) => `${value}px`,
+  ],
+] as const;
+
+type CoerciblePropertyNames = (typeof coerceMatchers)[number][0][number];
+
+/**
+ * Coerce a property value from a number to a CSS value using
+ * some standardized unit.
+ * E.g. `width: 100` becomes `width: '100px'`.
+ */
 export const coerceToCssValue = (
   property: AnimatePropertyName,
-  value: string | number,
-): string => {
+  value: string | number | undefined,
+): string | undefined => {
   if (typeof value === 'number') {
-    return match(property)
-      .with('rotateX', () => `${value}deg`)
-      .with('rotateY', () => `${value}deg`)
-      .with('rotateZ', () => `${value}deg`)
-      .with('width', () => `${value}px`)
+    return coerceMatchers
+      .reduce((acc, [matcher, fn]) => {
+        return acc.with(P.union(...matcher), () => fn(value)) as any;
+      }, match(property))
       .otherwise(() => `${value}`);
   }
   return value;
@@ -90,34 +108,34 @@ export const coerceToCssValue = (
 
 export type ValueOrKeyframes<T> = T | T[] | [null, ...T[]];
 
+/**
+ * This type specifies all the properties that can be animated with their basic type.
+ */
+type SingleAnimateProperties = CSSType.StandardProperties & {
+  x: string | number;
+  y: string | number;
+  z: string | number;
+  rotateX: string | number;
+  rotateY: string | number;
+  rotateZ: string | number;
+  scaleX: string | number;
+  scaleY: string | number;
+  scaleZ: string | number;
+  skewX: string | number;
+  skewY: string | number;
+};
+
+/**
+ * Adds keyframes support to all properties, as well as coercing.
+ */
 export type AnimateProperties = Partial<{
-  opacity: ValueOrKeyframes<number>;
-  x: ValueOrKeyframes<number | string>;
-  y: ValueOrKeyframes<number | string>;
-  z: ValueOrKeyframes<number | string>;
-  rotateX: ValueOrKeyframes<number | string>;
-  rotateY: ValueOrKeyframes<number | string>;
-  rotateZ: ValueOrKeyframes<number | string>;
-  scaleX: ValueOrKeyframes<number>;
-  scaleY: ValueOrKeyframes<number>;
-  scaleZ: ValueOrKeyframes<number>;
-  width: ValueOrKeyframes<number | string>;
+  [K in keyof SingleAnimateProperties]: ValueOrKeyframes<
+    | SingleAnimateProperties[K]
+    | (K extends CoerciblePropertyNames ? number : never)
+  >;
 }>;
 
 export type AnimatePropertyName = keyof AnimateProperties;
-const possibleAnimatePropertyNames = [
-  'opacity',
-  'x',
-  'y',
-  'z',
-  'rotateX',
-  'rotateY',
-  'rotateZ',
-  'scaleX',
-  'scaleY',
-  'scaleZ',
-  'width',
-] as const;
 
 export type SpringTransition = {
   easing: 'spring';
@@ -140,7 +158,7 @@ export type Transition =
     }>
   | SpringTransition;
 
-export type AnimateOptions = AnimateProperties & {
+export type AnimateOptions = Omit<AnimateProperties, 'transition'> & {
   transition?: Transition & Partial<Record<AnimatePropertyName, Transition>>;
 };
 
@@ -153,7 +171,9 @@ const animateOptionsEqual = (
   if (b === undefined) {
     return false;
   }
-  for (const prop of possibleAnimatePropertyNames) {
+  for (const prop of [
+    ...new Set([...Object.keys(a), ...Object.keys(b)]),
+  ] as AnimatePropertyName[]) {
     if (Array.isArray(a[prop]) && Array.isArray(b[prop])) {
     }
     if (Array.isArray(a[prop]) !== Array.isArray(b[prop])) {
@@ -187,7 +207,7 @@ export const animatePropertiesToStyle = (properties: AnimateProperties) => {
   return Object.fromEntries(
     Object.entries(properties)
       .map(([_name, valueOrKeyframes]) => {
-        const name = matchAnimatePropertyNameToCssPropertyName(
+        const name = matchAnimatePropertyNameToCssVariableName(
           _name as AnimatePropertyName,
         );
 
@@ -248,10 +268,10 @@ export const extractNumberFromCssValue = (value: string) => {
 };
 
 /**
- * Converts shorthand properties to the actual css property name.
+ * Converts shorthand properties to the actual css variable name.
  * Or otherwise returns unchanged.
  */
-export const matchAnimatePropertyNameToCssPropertyName = (
+export const matchAnimatePropertyNameToCssVariableName = (
   name: AnimatePropertyName,
 ) => {
   return match(name as AnimatePropertyName)
@@ -264,5 +284,7 @@ export const matchAnimatePropertyNameToCssPropertyName = (
     .with('scaleX', () => '--scale-x')
     .with('scaleY', () => '--scale-y')
     .with('scaleZ', () => '--scale-z')
+    .with('skewX', () => '--skew-x')
+    .with('skewY', () => '--skew-y')
     .otherwise(() => name);
 };

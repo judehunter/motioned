@@ -1,7 +1,7 @@
 import {
   extractNumberFromCssValue,
   matchAgainstVariants,
-  matchAnimatePropertyNameToCssPropertyName,
+  matchAnimatePropertyNameToCssVariableName,
   sampleEasingFn,
 } from './utils.js';
 import {
@@ -23,7 +23,6 @@ import React, {
   useMemo,
   useRef,
 } from 'react';
-import { match } from 'ts-pattern';
 import { registerCSSProperties } from './utils.js';
 import { Generator, sampleGenerator } from './generators/generators.js';
 import { makeSpringGenerator } from './generators/spring.js';
@@ -69,7 +68,7 @@ const useAnimation = (
       // loop over properties and create animations,
       // one for each property
       for (const [_name, valueOrKeyframes] of Object.entries(properties)) {
-        const name = matchAnimatePropertyNameToCssPropertyName(
+        const name = matchAnimatePropertyNameToCssVariableName(
           _name as AnimatePropertyName,
         );
 
@@ -113,7 +112,7 @@ const useAnimation = (
         // map non-css convenience values to css values,
         // e.g. 0 -> '0px' for width
         const keyframes = rawKeyframes.map((value) =>
-          coerceToCssValue(name as AnimatePropertyName, value!),
+          coerceToCssValue(_name as AnimatePropertyName, value!),
         );
 
         const transition =
@@ -212,7 +211,12 @@ const mDiv = <TVariants extends string>(
   const memodMatchedInitial = useMemo(
     () =>
       initial
-        ? animatePropertiesToStyle(matchAgainstVariants(variants, initial))
+        ? animatePropertiesToStyle(
+            matchAgainstVariants(
+              variants,
+              initial as AnimateOptions | string,
+            ) as AnimateProperties,
+          )
         : {},
     [],
   );
@@ -236,7 +240,7 @@ const mDiv = <TVariants extends string>(
         ...rest.style,
         ...memodMatchedInitial,
         transform:
-          'translate(var(--x), var(--y)) rotate(var(--rotate-z)) scale(var(--scale-x), var(--scale-y))',
+          'translateX(var(--x, 0px)) translateY(var(--y, 0px)) rotateZ(var(--rotate-z, 0deg)) scaleX(var(--scale-x, 1)) scaleY(var(--scale-y, 1)) skewX(var(--skew-x, 0)) skewY(var(--skew-y, 0))',
       }}
     />
   );
