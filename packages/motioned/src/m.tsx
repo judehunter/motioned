@@ -1,5 +1,6 @@
 import {
   extractNumberFromCssValue,
+  kebabize,
   matchAgainstVariants,
   matchAnimatePropertyNameToCssVariableName,
   sampleEasingFn,
@@ -59,7 +60,7 @@ const useAnimation = (
        * Get the current value of a property from the computed styles
        */
       const getCurrentValue = (property: string) => {
-        return computedStyles.getPropertyValue(property);
+        return computedStyles.getPropertyValue(kebabize(property));
       };
 
       // split transition and properties
@@ -79,8 +80,6 @@ const useAnimation = (
 
         if (currentAnim) {
           currentAnim.anim.commitStyles();
-
-          // currentDomValue = getCurrentValue(_name);
 
           const effect = currentAnim.anim.effect;
           if (effect && currentAnim.generator) {
@@ -168,6 +167,7 @@ const useAnimation = (
           {
             duration,
             fill: 'forwards',
+            delay: transition?.delay,
           },
         );
         // add animation to current animation set
@@ -242,7 +242,7 @@ const mDiv = <TVariants extends string>(
         ...rest.style,
         ...memodMatchedInitial,
         transform:
-          'translateX(var(--x, 0px)) translateY(var(--y, 0px)) rotateZ(var(--rotate-z, 0deg)) scaleX(var(--scale-x, 1)) scaleY(var(--scale-y, 1)) skewX(var(--skew-x, 0)) skewY(var(--skew-y, 0))',
+          'translateX(var(--x, 0px)) translateY(var(--y, 0px)) rotateX(var(--rotate-x, 0deg)) rotateY(var(--rotate-y, 0deg)) rotateZ(var(--rotate-z, 0deg)) scaleX(var(--scale-x, 1)) scaleY(var(--scale-y, 1)) skewX(var(--skew-x, 0)) skewY(var(--skew-y, 0))',
       }}
     />
   );

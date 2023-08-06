@@ -147,6 +147,7 @@ export type SpringTransition = {
   mass?: number;
   restDistance?: number;
   restVelocity?: number;
+  delay?: number;
 };
 
 export type Transition =
@@ -159,6 +160,8 @@ export type Transition =
         | 'ease-out'
         | 'ease-in'
         | 'ease-in-out'
+        | 'step-start'
+        | 'step-end'
         | EasingFn;
     }>
   | SpringTransition;
@@ -293,3 +296,9 @@ export const matchAnimatePropertyNameToCssVariableName = (
     .with('skewY', () => '--skew-y')
     .otherwise(() => name);
 };
+
+export const kebabize = (str: string) =>
+  str.replace(
+    /[A-Z]+(?![a-z])|[A-Z]/g,
+    ($, ofs) => (ofs ? '-' : '') + $.toLowerCase(),
+  );
