@@ -30,15 +30,21 @@ export const makeSpringGenerator = (
     const angularFreq =
       undampedAngularFreq * Math.sqrt(1 - dampingRatio * dampingRatio);
 
+    // these terms are placed here to avoid recalculation.
+    // I pulled out as much as I could, leaving only the terms that require `t`,
+    // or those that are unsimplifiable
     const term1 = dampingRatio * undampedAngularFreq;
     const term2 = (-velocity + term1 * initialDelta) / angularFreq;
     const term3 = Math.exp(-term1);
 
-    getPosition = (t) =>
-      to -
-      term3 ** t *
-        (term2 * Math.sin(angularFreq * t) +
-          initialDelta * Math.cos(angularFreq * t));
+    getPosition = (t) => {
+      const term4 = angularFreq * t;
+
+      return (
+        to -
+        term3 ** t * (term2 * Math.sin(term4) + initialDelta * Math.cos(term4))
+      );
+    };
   }
   // Critically damped spring
   else if (dampingRatio === 1) {
@@ -55,11 +61,15 @@ export const makeSpringGenerator = (
     const term2 = -velocity + dampingRatio * undampedAngularFreq * initialDelta;
     const term3 = omega2 * initialDelta;
 
-    getPosition = (t) =>
-      to -
-      (term1 ** t *
-        (term2 * Math.sinh(omega2 * t) + term3 * Math.cosh(omega2 * t))) /
-        omega2;
+    getPosition = (t) => {
+      const term4 = omega2 * t;
+
+      return (
+        to -
+        (term1 ** t * (term2 * Math.sinh(term4) + term3 * Math.cosh(term4))) /
+          omega2
+      );
+    };
   }
 
   return ((t: number) => {
