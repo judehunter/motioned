@@ -1,7 +1,7 @@
 import { Generator } from './generators.js';
 
 /*
-  Inspired by motion-one (MIT License)
+  Inspired by motion one (MIT License) and wobble (MIT License)
 */
 export const makeSpringGenerator = (
   { from, to, velocity }: { from: number; to: number; velocity: number },
@@ -25,29 +25,52 @@ export const makeSpringGenerator = (
 
   let getPosition: (t: number) => number;
 
+  // Underdamped spring
   if (dampingRatio < 1) {
     const angularFreq =
       undampedAngularFreq * Math.sqrt(1 - dampingRatio * dampingRatio);
 
-    // Underdamped spring (bouncy)
-    getPosition = (t) =>
-      to -
-      Math.exp(-dampingRatio * undampedAngularFreq * t) *
-        (((-velocity + dampingRatio * undampedAngularFreq * initialDelta) /
-          angularFreq) *
-          Math.sin(angularFreq * t) +
-          initialDelta * Math.cos(angularFreq * t));
-  } else {
-    // Critically damped spring
+    // these terms are placed here to avoid recalculation.
+    // I pulled out as much as I could, leaving only the terms that require `t`,
+    // or those that are unsimplifiable
+    const term1 = dampingRatio * undampedAngularFreq;
+    const term2 = (-velocity + term1 * initialDelta) / angularFreq;
+    const term3 = Math.exp(-term1);
+
     getPosition = (t) => {
+      const term4 = angularFreq * t;
+
       return (
         to -
-        Math.exp(-undampedAngularFreq * t) *
-          (initialDelta + (-velocity + undampedAngularFreq * initialDelta) * t)
+        term3 ** t * (term2 * Math.sin(term4) + initialDelta * Math.cos(term4))
       );
     };
   }
-  // TODO: Overdamped spring
+  // Critically damped spring
+  else if (dampingRatio === 1) {
+    const term1 = -velocity + undampedAngularFreq * initialDelta;
+    const term2 = Math.exp(-undampedAngularFreq);
+
+    getPosition = (t) => to - term2 ** t * (initialDelta + term1 * t);
+  }
+  // Overdamped spring
+  else {
+    const omega2 =
+      undampedAngularFreq * Math.sqrt(dampingRatio * dampingRatio - 1.0);
+    const term1 = Math.exp(-dampingRatio * undampedAngularFreq);
+    const term2 = -velocity + dampingRatio * undampedAngularFreq * initialDelta;
+    const term3 = omega2 * initialDelta;
+
+    getPosition = (t) => {
+      const term4 = omega2 * t;
+
+      return (
+        to -
+        (term1 ** t * (term2 * Math.sinh(term4) + term3 * Math.cosh(term4))) /
+          omega2
+      );
+    };
+  }
 
   return ((t: number) => {
     const position = getPosition(t);
