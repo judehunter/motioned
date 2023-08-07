@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { P, match } from 'ts-pattern';
 import type * as CSSType from 'csstype';
 
@@ -150,19 +150,24 @@ export type SpringTransition = {
   delay?: number;
 };
 
+export type BasicEasingFns =
+  | 'linear'
+  | 'ease'
+  | 'ease-out'
+  | 'ease-in'
+  | 'ease-in-out';
+
 export type Transition =
   | Partial<{
       duration: number;
       delay: number;
       easing:
-        | 'linear'
-        | 'ease'
-        | 'ease-out'
-        | 'ease-in'
-        | 'ease-in-out'
+        | BasicEasingFns
         | 'step-start'
         | 'step-end'
-        | EasingFn;
+        | EasingFn
+        | Array<BasicEasingFns>
+        | [number, number, number, number];
     }>
   | SpringTransition;
 

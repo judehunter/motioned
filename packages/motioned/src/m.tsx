@@ -14,6 +14,7 @@ import {
   animatePropertiesToStyle,
   coerceToCssValue,
   useAnimateOptionsEffect,
+  type BasicEasingFns,
 } from './utils.js';
 import { asSelf } from './utils.js';
 import React, {
@@ -124,6 +125,7 @@ const useAnimation = (
 
         let duration: number;
         let generator: undefined | Generator;
+
         if (transition?.easing === 'spring') {
           // NOTE: for springs, only two keyframes are currently supported
           const stiffness = transition?.stiffness ?? 100;
@@ -158,16 +160,40 @@ const useAnimation = (
           easing = `linear(${sampleEasingFn(easing, duration).join(',')})`;
         }
 
+        let isEasingFnList = false;
+
+        if (Array.isArray(easing)) {
+          const isCubic = typeof easing[0] === 'number';
+
+          if (isCubic) {
+            easing = `cubic-bezier(${easing.join(',')})`;
+          } else {
+            isEasingFnList = true;
+          }
+        }
+
+        const easingFn = easing as Exclude<
+          typeof easing,
+          Function | Array<unknown>
+        >;
+
+        const isolateEasingFn = (list: Array<BasicEasingFns>, idx: number) => {
+          return list[idx] ?? list[list.length - 1];
+        };
+
         // create and start animation
         const anim = elem.current.animate(
-          keyframes.map((keyframe) => ({
+          keyframes.map((keyframe, i) => ({
             [name]: keyframe,
-            easing: easing as Exclude<typeof easing, Function>,
+            easing: isEasingFnList
+              ? isolateEasingFn(easing as Array<BasicEasingFns>, i)
+              : undefined,
           })),
           {
             duration,
             fill: 'forwards',
             delay: transition?.delay,
+            easing: !isEasingFnList ? easingFn : undefined,
           },
         );
         // add animation to current animation set
