@@ -178,7 +178,13 @@ const useAnimation = (
         >;
 
         const isolateEasingFn = (list: Array<BasicEasingFns>, idx: number) => {
-          return list[idx] ?? list[list.length - 1];
+          const easingFn = list[idx + 1] ?? list[list.length - 1];
+
+          if (typeof easingFn[0] === 'number') {
+            return `cubic-bezier(${(easingFn as Array<number>).join(',')})`;
+          }
+
+          return easingFn as Exclude<BasicEasingFns, Array<unknown>>;
         };
 
         // create and start animation
@@ -186,7 +192,7 @@ const useAnimation = (
           keyframes.map((keyframe, i) => ({
             [name]: keyframe,
             easing: isEasingFnList
-              ? isolateEasingFn(easing as Array<BasicEasingFns>, i)
+              ? isolateEasingFn(easing as any, i)
               : undefined,
             offset:
               transition?.easing === 'spring'

@@ -1,30 +1,38 @@
 import { Meta, StoryObj } from '@storybook/react';
+
 import { m } from 'motioned';
 
 const Component = () => {
   return (
     <div>
-      <m.div
-        animate={{
-          x: [0, 100, 150, 200],
-          transition: {
-            easing: ['ease-out', 'ease-in'],
-            times: [0, 0.5, 0.75, 1],
-            duration: 5000,
-          },
-        }}
-        className="w-10 h-10 bg-blue-500 rounded-full"
-      />
-      <div className="relative">
-        <hr className="border" style={{ width: '200px' }} />
-        <div className="absolute" style={{ left: 100 }}>
-          100
-        </div>
-        <div className="absolute" style={{ left: 150 }}>
-          150
-        </div>
-        <div className="absolute" style={{ left: 200 }}>
-          200
+      <div className="h-1 rounded-md w-10 mb-2 bg-gray-300 mx-auto" />
+      <div className="w-32 border-2 border-gray-300 p-2 rounded-2xl">
+        <div className="relative h-60">
+          <m.div
+            animate={{
+              height: [0, '80%', '98%', '80%', '50%'],
+              backgroundColor: [
+                '#d1d5db',
+                '#1f2937',
+                '#030712',
+                '#9ca3af',
+                '#d1d5db',
+              ],
+              transition: {
+                easing: [
+                  // ease out circ
+                  'cubic-bezier(0, 0.55, 0.45, 1)',
+                  'ease-in-out',
+                  'ease',
+                  // ease in out back
+                  [0.68, -0.6, 0.32, 1.6],
+                ],
+                times: [null, 0.5, 0.6, 0.9],
+                duration: 8000,
+              },
+            }}
+            className="w-full bg-gray-800 rounded-lg absolute bottom-0"
+          />
         </div>
       </div>
     </div>

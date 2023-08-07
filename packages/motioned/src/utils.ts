@@ -155,7 +155,9 @@ export type BasicEasingFns =
   | 'ease'
   | 'ease-out'
   | 'ease-in'
-  | 'ease-in-out';
+  | 'ease-in-out'
+  | `cubic-bezier(${number}, ${number}, ${number}, ${number})`
+  | [number, number, number, number];
 
 export type Transition =
   | Partial<{
@@ -166,9 +168,8 @@ export type Transition =
         | 'step-start'
         | 'step-end'
         | EasingFn
-        | Array<BasicEasingFns>
-        | [number, number, number, number];
-      times?: Array<number>;
+        | Array<BasicEasingFns>;
+      times?: Array<number | null>;
     }>
   | SpringTransition;
 
