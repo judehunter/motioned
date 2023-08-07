@@ -168,6 +168,7 @@ export type Transition =
         | EasingFn
         | Array<BasicEasingFns>
         | [number, number, number, number];
+      times?: Array<number>;
     }>
   | SpringTransition;
 

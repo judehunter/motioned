@@ -188,6 +188,10 @@ const useAnimation = (
             easing: isEasingFnList
               ? isolateEasingFn(easing as Array<BasicEasingFns>, i)
               : undefined,
+            offset:
+              transition?.easing === 'spring'
+                ? undefined
+                : transition?.times?.[i],
           })),
           {
             duration,
