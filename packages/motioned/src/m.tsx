@@ -1,4 +1,5 @@
 import {
+  type Transition,
   extractNumberFromCssValue,
   kebabize,
   matchAgainstVariants,
@@ -172,19 +173,16 @@ const useAnimation = (
           }
         }
 
-        const easingFn = easing as Exclude<
-          typeof easing,
-          Function | Array<unknown>
-        >;
+        const easingFn = easing as Exclude<typeof easing, Function | unknown[]>;
 
-        const isolateEasingFn = (list: Array<BasicEasingFns>, idx: number) => {
+        const isolateEasingFn = (list: BasicEasingFns[], idx: number) => {
           const easingFn = list[idx + 1] ?? list[list.length - 1];
 
           if (typeof easingFn[0] === 'number') {
             return `cubic-bezier(${(easingFn as Array<number>).join(',')})`;
           }
 
-          return easingFn as Exclude<BasicEasingFns, Array<unknown>>;
+          return easingFn as Exclude<BasicEasingFns, unknown[]>;
         };
 
         // create and start animation
