@@ -1,5 +1,5 @@
 # 🌀 motioned
-Batteries included toolkit for web developers and designers.
+Batteries included animation toolkit for web developers and designers.
 
 🎨 &nbsp; **Craft animations in Figma.** Make them an integral part of your design process.
 
