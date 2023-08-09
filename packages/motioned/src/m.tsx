@@ -15,6 +15,7 @@ import {
   animatePropertiesToStyle,
   coerceToCssValue,
   useAnimateOptionsEffect,
+  convertCustomEasing,
   type BasicEasingFns,
 } from './utils.js';
 import { asSelf } from './utils.js';
@@ -167,7 +168,7 @@ const useAnimation = (
           const isCubic = typeof easing[0] === 'number';
 
           if (isCubic) {
-            easing = `cubic-bezier(${easing.join(',')})`;
+            easing = convertCustomEasing(easing);
           } else {
             isEasingFnList = true;
           }
@@ -176,13 +177,8 @@ const useAnimation = (
         const easingFn = easing as Exclude<typeof easing, Function | unknown[]>;
 
         const isolateEasingFn = (list: BasicEasingFns[], idx: number) => {
-          const easingFn = list[idx + 1] ?? list[list.length - 1];
-
-          if (typeof easingFn[0] === 'number') {
-            return `cubic-bezier(${(easingFn as Array<number>).join(',')})`;
-          }
-
-          return easingFn as Exclude<BasicEasingFns, unknown[]>;
+          let fn = list[idx + 1] ?? list[list.length - 1];
+          return convertCustomEasing(fn);
         };
 
         // create and start animation
