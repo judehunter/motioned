@@ -111,19 +111,20 @@ export type ValueOrKeyframes<T> = T | T[] | [null, ...T[]];
 /**
  * This type specifies all the properties that can be animated with their basic type.
  */
-type SingleAnimateProperties = CSSType.StandardProperties & {
-  x: string | number;
-  y: string | number;
-  z: string | number;
-  rotateX: string | number;
-  rotateY: string | number;
-  rotateZ: string | number;
-  scaleX: string | number;
-  scaleY: string | number;
-  scaleZ: string | number;
-  skewX: string | number;
-  skewY: string | number;
-};
+type SingleAnimateProperties = CSSType.StandardProperties &
+  CSSType.SvgProperties & {
+    x: string | number;
+    y: string | number;
+    z: string | number;
+    rotateX: string | number;
+    rotateY: string | number;
+    rotateZ: string | number;
+    scaleX: string | number;
+    scaleY: string | number;
+    scaleZ: string | number;
+    skewX: string | number;
+    skewY: string | number;
+  };
 
 /**
  * Adds keyframes support to all properties, as well as coercing.

@@ -353,6 +353,7 @@ export const m = Object.fromEntries(
     'option',
     'output',
     'p',
+    'path',
     'param',
     'picture',
     'pre',
