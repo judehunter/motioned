@@ -197,57 +197,204 @@ const useAnimation = (
   });
 };
 
-const mDiv = <TVariants extends string>(
-  {
-    animate,
-    initial,
-    variants,
-    ...rest
-  }: {
-    initial?: AnimateProperties | NoInfer<TVariants>;
-    animate: AnimateOptions | NoInfer<TVariants>;
-    variants?: Variants<TVariants>;
-  } & ComponentProps<'div'>,
-  ref: ForwardedRef<HTMLDivElement>,
-) => {
-  const memodMatchedInitial = useMemo(
-    () =>
-      initial
-        ? animatePropertiesToStyle(
-            matchAgainstVariants(
-              variants,
-              initial as AnimateOptions | string,
-            ) as AnimateProperties,
-          )
-        : {},
-    [],
+// forwardRef is naughty.
+const typedForwardRef = <T,>(render: T) => forwardRef(render as any) as T;
+
+// maps 'div' to 'HTMLDivElement', 'circle' to 'SVGCircleElement', etc.
+// this is needed for the `ref` prop in `makeMElem`
+type ElementTypeOf<T extends keyof React.JSX.IntrinsicElements> =
+  React.JSX.IntrinsicElements[T] extends React.DetailedHTMLProps<
+    React.HTMLAttributes<infer U>,
+    any
+  >
+    ? U
+    : never;
+
+const makeMElem = <TElement extends keyof React.JSX.IntrinsicElements>(
+  Element: TElement,
+) =>
+  typedForwardRef(
+    <TVariants extends string>(
+      {
+        animate,
+        initial,
+        variants,
+        ...rest
+      }: {
+        initial?: AnimateProperties | NoInfer<TVariants>;
+        animate: AnimateOptions | NoInfer<TVariants>;
+        variants?: Variants<TVariants>;
+        ref?: React.Ref<ElementTypeOf<TElement>>;
+      } & ComponentProps<TElement>,
+      ref: ForwardedRef<TElement>,
+    ) => {
+      const memodMatchedInitial = useMemo(
+        () =>
+          initial
+            ? animatePropertiesToStyle(
+                matchAgainstVariants(
+                  variants,
+                  initial as AnimateOptions | string,
+                ) as AnimateProperties,
+              )
+            : {},
+        [],
+      );
+      const elem = useRef<HTMLDivElement>(null!);
+
+      useAnimation(elem, animate, variants);
+
+      const ElementAsAny = Element as any;
+
+      const { ref: _, ...restWithoutRef } = rest;
+
+      return (
+        <ElementAsAny
+          ref={(e: any) => {
+            if (!e) return;
+            elem.current = e;
+            if (typeof ref === 'function') {
+              ref(e);
+            } else if (ref) {
+              ref.current = e;
+            }
+          }}
+          {...restWithoutRef}
+          style={{
+            ...rest.style,
+            ...memodMatchedInitial,
+            transform:
+              'translateX(var(--x, 0px)) translateY(var(--y, 0px)) rotateX(var(--rotate-x, 0deg)) rotateY(var(--rotate-y, 0deg)) rotateZ(var(--rotate-z, 0deg)) scaleX(var(--scale-x, 1)) scaleY(var(--scale-y, 1)) skewX(var(--skew-x, 0)) skewY(var(--skew-y, 0))',
+          }}
+        />
+      );
+    },
   );
-  const elem = useRef<HTMLDivElement>(null!);
 
-  useAnimation(elem, animate, variants);
+// the actual component type
+type MElem<TElement extends keyof React.JSX.IntrinsicElements> = ReturnType<
+  typeof makeMElem<TElement>
+>;
 
-  return (
-    <div
-      ref={(e) => {
-        if (!e) return;
-        elem.current = e;
-        if (typeof ref === 'function') {
-          ref(e);
-        } else if (ref) {
-          ref.current = e;
-        }
-      }}
-      {...rest}
-      style={{
-        ...rest.style,
-        ...memodMatchedInitial,
-        transform:
-          'translateX(var(--x, 0px)) translateY(var(--y, 0px)) rotateX(var(--rotate-x, 0deg)) rotateY(var(--rotate-y, 0deg)) rotateZ(var(--rotate-z, 0deg)) scaleX(var(--scale-x, 1)) scaleY(var(--scale-y, 1)) skewX(var(--skew-x, 0)) skewY(var(--skew-y, 0))',
-      }}
-    />
-  );
-};
-
-export const m = {
-  div: forwardRef(mDiv) as typeof mDiv,
+// all HTML elements mapped
+// TODO: should probably exclude stuff like "title"
+export const m = Object.fromEntries(
+  [
+    'a',
+    'abbr',
+    'address',
+    'area',
+    'article',
+    'aside',
+    'audio',
+    'b',
+    'base',
+    'bdi',
+    'bdo',
+    'blockquote',
+    'body',
+    'br',
+    'button',
+    'canvas',
+    'caption',
+    'cite',
+    'code',
+    'col',
+    'colgroup',
+    'data',
+    'datalist',
+    'dd',
+    'del',
+    'details',
+    'dfn',
+    'dialog',
+    'div',
+    'dl',
+    'dt',
+    'em',
+    'embed',
+    'fieldset',
+    'figcaption',
+    'figure',
+    'footer',
+    'form',
+    'h1',
+    'h2',
+    'h3',
+    'h4',
+    'h5',
+    'h6',
+    'head',
+    'header',
+    'hgroup',
+    'hr',
+    'html',
+    'i',
+    'iframe',
+    'img',
+    'input',
+    'ins',
+    'kbd',
+    'label',
+    'legend',
+    'li',
+    'link',
+    'main',
+    'map',
+    'mark',
+    'menu',
+    'meta',
+    'meter',
+    'nav',
+    'noscript',
+    'object',
+    'ol',
+    'optgroup',
+    'option',
+    'output',
+    'p',
+    'path',
+    'param',
+    'picture',
+    'pre',
+    'progress',
+    'q',
+    'rp',
+    'rt',
+    'ruby',
+    's',
+    'samp',
+    'script',
+    'section',
+    'select',
+    'small',
+    'source',
+    'span',
+    'strong',
+    'style',
+    'sub',
+    'summary',
+    'sup',
+    'svg',
+    'table',
+    'tbody',
+    'td',
+    'template',
+    'textarea',
+    'tfoot',
+    'th',
+    'thead',
+    'time',
+    'title',
+    'tr',
+    'track',
+    'u',
+    'ul',
+    'var',
+    'video',
+    'wbr',
+  ].map((name) => [name, makeMElem(name as any)]),
+) as any as {
+  // mapping all html elements to their m counterparts
+  [K in keyof React.JSX.IntrinsicElements]: MElem<K>;
 };
