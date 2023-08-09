@@ -159,7 +159,7 @@ export type BasicEasingFns =
   | 'ease-out'
   | 'ease-in'
   | 'ease-in-out'
-  | keyof typeof CUSTOM_EASINGS
+  | CustomEasingFn
   | `cubic-bezier(${number}, ${number}, ${number}, ${number})`
   | [number, number, number, number];
 
