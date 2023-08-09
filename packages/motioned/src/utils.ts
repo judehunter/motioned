@@ -151,6 +151,8 @@ export type SpringTransition = {
   delay?: number;
 };
 
+export type CustomEasingFn = keyof typeof CUSTOM_EASINGS;
+
 export type BasicEasingFns =
   | 'linear'
   | 'ease'
@@ -321,11 +323,12 @@ export const CUSTOM_EASINGS = {
   'back-in-out': [0.68, -0.6, 0.32, 1.6],
 };
 
+/** converts a custom easing function or option to a format that can be used by the WAAPI `easing` prop. */
 export const convertCustomEasing = (
   easing: Exclude<Transition['easing'], EasingFn | undefined>,
 ) => {
   const converted = asSelf(
-    CUSTOM_EASINGS[easing as keyof typeof CUSTOM_EASINGS] ?? easing,
+    CUSTOM_EASINGS[easing as CustomEasingFn] ?? easing,
     (x) => x as typeof easing | number[],
   );
 
