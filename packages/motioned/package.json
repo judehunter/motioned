@@ -1,8 +1,13 @@
 {
   "name": "motioned",
-  "version": "0.0.0",
-  "description": "Fully-featured animation library for React",
+  "version": "0.0.1",
+  "description": "Batteries included animation library for React + devtools + Figma plugin. Based on WAAPI.",
   "keywords": [
+    "animation",
+    "react",
+    "waapi",
+    "figma",
+    "devtools",
     "node",
     "lib",
     "esm"

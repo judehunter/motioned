@@ -1,8 +1,5 @@
 import { Generator } from './generators.js';
 
-/*
-  Inspired by motion one (MIT License) and wobble (MIT License)
-*/
 export const makeSpringGenerator = (
   { from, to, velocity }: { from: number; to: number; velocity: number },
   {
