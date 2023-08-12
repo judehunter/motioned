@@ -1,6 +1,6 @@
 {
   "name": "motioned",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Batteries included animation library for React + devtools + Figma plugin. Based on WAAPI.",
   "keywords": [
     "animation",
