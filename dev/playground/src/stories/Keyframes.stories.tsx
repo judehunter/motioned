@@ -21,13 +21,13 @@ const Component = () => {
               transition: {
                 easing: [
                   // ease out circ
-                  'cubic-bezier(0, 0.55, 0.45, 1)',
+                  [0, 0.55, 0.45, 1],
                   'ease-in-out',
-                  'ease',
+                  (t) => t ** 10,
                   // ease in out back
                   [0.68, -0.6, 0.32, 1.6],
                 ],
-                times: [null, 0.5, 0.6, 0.9],
+                times: [0, 0.5, 0.6, 0.9, 1],
                 duration: 8000,
               },
             }}

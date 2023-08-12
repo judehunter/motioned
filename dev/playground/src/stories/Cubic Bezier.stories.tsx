@@ -2,7 +2,7 @@ import { Meta, StoryObj } from '@storybook/react';
 
 import { m } from 'motioned';
 
-const Component = ({ easing }) => {
+const Component = ({ easing }: { easing: any }) => {
   return (
     <div>
       <m.svg
@@ -30,6 +30,7 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   argTypes: {
     easing: {
+      defaultValue: 'ease-in-out',
       options: [
         'ease',
         'ease-in',

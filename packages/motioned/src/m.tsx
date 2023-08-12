@@ -1,10 +1,9 @@
 import {
-  type Transition,
   extractNumberFromCssValue,
   kebabize,
   matchAgainstVariants,
   matchAnimatePropertyNameToCssVariableName,
-  sampleEasingFn,
+  mapEasingOrEasingList,
 } from './utils.js';
 import {
   AnimateOptions,
@@ -15,8 +14,6 @@ import {
   animatePropertiesToStyle,
   coerceToCssValue,
   useAnimateOptionsEffect,
-  convertCustomEasing,
-  type BasicEasingFns,
 } from './utils.js';
 import { asSelf } from './utils.js';
 import React, {
@@ -158,46 +155,25 @@ const useAnimation = (
           duration = transition?.duration ?? DEFAULT_DURATION;
         }
 
-        if (typeof easing === 'function') {
-          easing = `linear(${sampleEasingFn(easing, duration).join(',')})`;
-        }
-
-        let isEasingFnList = false;
-
-        if (Array.isArray(easing)) {
-          const isCubic = typeof easing[0] === 'number';
-
-          if (isCubic) {
-            easing = convertCustomEasing(easing);
-          } else {
-            isEasingFnList = true;
-          }
-        }
-
-        const easingFn = easing as Exclude<typeof easing, Function | unknown[]>;
-
-        const isolateEasingFn = (list: BasicEasingFns[], idx: number) => {
-          let fn = list[idx + 1] ?? list[list.length - 1];
-          return convertCustomEasing(fn);
-        };
+        const [easingOrEasingList, times]: any = mapEasingOrEasingList(
+          easing as any,
+          duration,
+          transition?.easing === 'spring' ? undefined : transition?.times,
+        );
 
         // create and start animation
         const anim = elem.current.animate(
           keyframes.map((keyframe, i) => ({
             [name]: keyframe,
-            easing: isEasingFnList
-              ? isolateEasingFn(easing as any, i)
-              : undefined,
-            offset:
-              transition?.easing === 'spring'
-                ? undefined
-                : transition?.times?.[i],
+            easing: Array.isArray(easingOrEasingList)
+              ? easingOrEasingList[i]
+              : easingOrEasingList,
+            offset: times?.[i],
           })),
           {
             duration,
             fill: 'forwards',
             delay: transition?.delay,
-            easing: !isEasingFnList ? easingFn : undefined,
           },
         );
         // add animation to current animation set
