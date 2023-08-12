@@ -3,7 +3,7 @@ import {
   kebabize,
   matchAgainstVariants,
   matchAnimatePropertyNameToCssVariableName,
-  sampleEasingFn,
+  mapEasingOrEasingList,
 } from './utils.js';
 import {
   AnimateOptions,
@@ -124,6 +124,7 @@ const useAnimation = (
 
         let duration: number;
         let generator: undefined | Generator;
+
         if (transition?.easing === 'spring') {
           // NOTE: for springs, only two keyframes are currently supported
           const stiffness = transition?.stiffness ?? 100;
@@ -154,15 +155,20 @@ const useAnimation = (
           duration = transition?.duration ?? DEFAULT_DURATION;
         }
 
-        if (typeof easing === 'function') {
-          easing = `linear(${sampleEasingFn(easing, duration).join(',')})`;
-        }
+        const [easingOrEasingList, times]: any = mapEasingOrEasingList(
+          easing as any,
+          duration,
+          transition?.easing === 'spring' ? undefined : transition?.times,
+        );
 
         // create and start animation
         const anim = elem.current.animate(
-          keyframes.map((keyframe) => ({
+          keyframes.map((keyframe, i) => ({
             [name]: keyframe,
-            easing: easing as Exclude<typeof easing, Function>,
+            easing: Array.isArray(easingOrEasingList)
+              ? easingOrEasingList[i]
+              : easingOrEasingList,
+            offset: times?.[i],
           })),
           {
             duration,

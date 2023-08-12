@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { P, match } from 'ts-pattern';
 import type * as CSSType from 'csstype';
 
@@ -141,6 +141,20 @@ export type AnimateProperties = Omit<
 
 export type AnimatePropertyName = keyof AnimateProperties;
 
+export type PredefinedEasing = keyof typeof PREDEFINED_EASINGS;
+
+export type TweenEasing =
+  | 'linear'
+  | 'ease'
+  | 'ease-out'
+  | 'ease-in'
+  | 'ease-in-out'
+  | 'step-start'
+  | 'step-end'
+  | PredefinedEasing
+  | EasingFn
+  | [number, number, number, number];
+
 export type SpringTransition = {
   easing: 'spring';
   stiffness?: number;
@@ -151,21 +165,14 @@ export type SpringTransition = {
   delay?: number;
 };
 
-export type Transition =
-  | Partial<{
-      duration: number;
-      delay: number;
-      easing:
-        | 'linear'
-        | 'ease'
-        | 'ease-out'
-        | 'ease-in'
-        | 'ease-in-out'
-        | 'step-start'
-        | 'step-end'
-        | EasingFn;
-    }>
-  | SpringTransition;
+export type TweenTransition = {
+  easing?: TweenEasing | TweenEasing[];
+  duration?: number;
+  delay?: number;
+  times?: number[];
+};
+
+export type Transition = TweenTransition | SpringTransition;
 
 export type AnimateOptions = AnimateProperties & {
   transition?: Transition & Partial<Record<AnimatePropertyName, Transition>>;
@@ -303,3 +310,70 @@ export const kebabize = (str: string) =>
     /[A-Z]+(?![a-z])|[A-Z]/g,
     ($, ofs) => (ofs ? '-' : '') + $.toLowerCase(),
   );
+
+export const PREDEFINED_EASINGS = {
+  'circ-in': [0.55, 0, 1, 0.45],
+  'circ-out': [0, 0.55, 0.45, 1],
+  'circ-in-out': [0.85, 0, 0.15, 1],
+  'back-in': [0.36, 0, 0.66, -0.56],
+  'back-out': [0.34, 1.56, 0.64, 1],
+  'back-in-out': [0.68, -0.6, 0.32, 1.6],
+} as const;
+
+/**
+ * Maps a single easing to a css easing function.
+ */
+export const mapEasing = (easing: TweenEasing, duration: number) => {
+  const mapped =
+    typeof easing === 'string' && easing in PREDEFINED_EASINGS
+      ? PREDEFINED_EASINGS[easing as PredefinedEasing]
+      : easing;
+
+  if (typeof easing === 'function') {
+    return `linear(${sampleEasingFn(easing, duration).join(',')})`;
+  }
+  if (Array.isArray(mapped)) {
+    return bezierDefinitionToEasing(mapped);
+  }
+  return mapped;
+};
+
+/**
+ * Same as `mapEasing` but can also handle a list of easings.
+ */
+export const mapEasingOrEasingList = (
+  easingOrEasingList: TweenEasing | TweenEasing[],
+  duration: number,
+  times: number[] | undefined,
+) => {
+  if (
+    Array.isArray(easingOrEasingList) &&
+    typeof easingOrEasingList[0] !== 'number'
+  ) {
+    const easingList = easingOrEasingList as TweenEasing[];
+
+    const timesArray =
+      times ?? easingList.map((_, i) => i / (easingList.length - 1));
+    return [
+      easingList.map((easing, i) => {
+        const durationForEasing =
+          duration * (timesArray[i + 1] - timesArray[i]);
+        return mapEasing(easing, durationForEasing);
+      }),
+      timesArray,
+    ];
+  }
+  const easing = easingOrEasingList as TweenEasing;
+  return [mapEasing(easing, duration), undefined];
+};
+
+export const bezierDefinitionToEasing = (
+  definition: [number, number, number, number],
+) => {
+  if (definition.length !== 4) {
+    throw new Error(
+      `Invalid bezier easing definition. Expected 4 numbers, got ${definition.length}`,
+    );
+  }
+  return `cubic-bezier(${definition.join(',')})`;
+};
