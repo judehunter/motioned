@@ -151,12 +151,15 @@ export type SpringTransition = {
   delay?: number;
 };
 
+export type CustomEasingFn = keyof typeof CUSTOM_EASINGS;
+
 export type BasicEasingFns =
   | 'linear'
   | 'ease'
   | 'ease-out'
   | 'ease-in'
   | 'ease-in-out'
+  | CustomEasingFn
   | `cubic-bezier(${number}, ${number}, ${number}, ${number})`
   | [number, number, number, number];
 
@@ -310,3 +313,28 @@ export const kebabize = (str: string) =>
     /[A-Z]+(?![a-z])|[A-Z]/g,
     ($, ofs) => (ofs ? '-' : '') + $.toLowerCase(),
   );
+
+export const CUSTOM_EASINGS = {
+  'circ-in': [0.55, 0, 1, 0.45],
+  'circ-out': [0, 0.55, 0.45, 1],
+  'circ-in-out': [0.85, 0, 0.15, 1],
+  'back-in': [0.36, 0, 0.66, -0.56],
+  'back-out': [0.34, 1.56, 0.64, 1],
+  'back-in-out': [0.68, -0.6, 0.32, 1.6],
+};
+
+/** converts a custom easing function or option to a format that can be used by the WAAPI `easing` prop. */
+export const convertCustomEasing = (
+  easing: Exclude<Transition['easing'], EasingFn | undefined>,
+) => {
+  const converted = asSelf(
+    CUSTOM_EASINGS[easing as CustomEasingFn] ?? easing,
+    (x) => x as typeof easing | number[],
+  );
+
+  if (Array.isArray(converted) && typeof converted[0] === 'number') {
+    return `cubic-bezier(${converted.join(',')})`;
+  }
+
+  return converted as Exclude<typeof easing, unknown[]>;
+};
