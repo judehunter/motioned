@@ -48,7 +48,6 @@ const buildColorString = (paint: Paint | { type: 'RGBA'; color: RGBA }) => {
 const buildBoxShadow = (effect: FigmaEffect) => {
   const shadowType = effect.type === 'INNER_SHADOW' ? 'inset ' : '';
 
-  // inset 0px 3px 3px rgba(...)
   return `${shadowType}${effect.offset.x}px ${effect.offset.y}px ${effect.radius}px ${buildColorString({
     // todo: for when value is set to hex
     type: 'RGBA',
@@ -84,6 +83,7 @@ export const convertNodePropsToStyles = (node: SceneNode) => {
             .with({ type: 'BACKGROUND_BLUR' }, (backdrop) => {
               ['backdropFilter', `blur(${backdrop.radius}px)`];
             })
+            .run()
         );
       });
     }
@@ -156,8 +156,41 @@ export type FigmaNodeTypesWithProps = Partial<
   >
 >;
 
+const convertEasingFn = (transition: FigmaReaction['action']['transition']) => {
+  return match(transition)
+    .with({ easing: { type: 'EASE_IN' } }, () => 'ease-in')
+    .with({ easing: { type: 'EASE_OUT' } }, () => 'ease-out')
+    .with({ easing: { type: 'EASE_IN_AND_OUT' } }, () => 'ease-in-out')
+    .with({ easing: { type: 'EASE_IN_AND_OUT_BACK' } }, () => 'back-in-out')
+    .with({ easing: { type: 'EASE_IN_BACK' } }, () => 'back-in')
+    .with({ easing: { type: 'CUSTOM_CUBIC_BEZIER' } }, (t) => {
+      const points = t.easing.easingFunctionCubicBezier;
+      return `cubic-bezier(${points.x1}, ${points.y1}, ${points.x2}, ${points.y2})`;
+    })
+    .run();
+};
+
+// for now we (remove) just supporting change to
+// for now (remove) we only support type === "SMART_ANIMATE"
+const convertInterationToTransition = (reaction: Array<FigmaReaction>) => {
+  // for now just (remove) support a single reaction
+  const rec = reaction[0];
+
+  // todo before review: add babel transpilation
+  if (!rec.action) return;
+
+  const transition = rec.action.transition;
+
+  if (!transition) return;
+
+  return {
+    easing: convertEasingFn(transition),
+    duration: transition.duration * 1000,
+  };
+};
+
 /**
- * transverse figma node stucture and filter in only children and variants
+ * generate node structure with children and variants
  * @returns {Object} tree: `{ Frame5: { children: [{ SubFrame: { ... } }], styles: { opactiy: 0, ... } } }`
  * @returns {Object} stylesPerVariant: `{ Frame5: { switch-on: { opacity: 0 }, switch-off: { opacity: 1 } } }`
  */
@@ -167,31 +200,38 @@ export const convertFigmaNodes = (
 ) => {
   // variant name -> styles
   const stylesPerVariant = {};
+  const transitionPerVariant = {};
 
   let currentVariant = variants[0];
 
-  /** transverse through the figma document tree and replace each node with a react component */
+  // transverse through the figma document tree and replace each node with a react component
   const buildFigmaNodeTree = (node: SceneNode & { children?: SceneNode[]; id: string }): FigmaNodeTypesWithProps => {
     // update current variant on a new component set.
     if (node.variantProperties) {
       currentVariant = Object.values(node.variantProperties)[0];
     }
 
+    const styles = convertNodePropsToStyles(node);
+
     const singleNode = {
       children: node.children ? node.children.map(buildFigmaNodeTree) : null,
-      styles: convertNodePropsToStyles(node),
+      styles,
       name: node.name,
       id: node.id,
       figmaNodeType: node.type,
     };
 
     if (node.type !== 'COMPONENT_SET') {
-      // variantsMap[node.name][currentVariant] = singleNode.styles;
-      if (stylesPerVariant[node.name] === undefined) {
-        stylesPerVariant[node.name] = {};
+      // assign transition to a variant
+      if (node.reactions && node.reactions.length > 0) {
+        const transition = convertInterationToTransition(node.reactions);
+        transitionPerVariant[currentVariant] = transition;
       }
 
-      stylesPerVariant[node.name][currentVariant] = singleNode.styles;
+      // e.g. { Frame5: { [currentVariant -> on]: {...} } }
+      stylesPerVariant[node.name] = Object.assign({}, stylesPerVariant[node.name], {
+        [currentVariant]: singleNode.styles,
+      });
     }
 
     return { [node.name]: singleNode };
@@ -199,7 +239,7 @@ export const convertFigmaNodes = (
 
   const tree = buildFigmaNodeTree(componentSetNode);
 
-  return { tree, stylesPerVariant };
+  return { tree, stylesPerVariant, transitionPerVariant };
 };
 
 /** get the difference between two styles and return the keys that change as an array */

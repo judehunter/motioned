@@ -29,9 +29,6 @@ function App() {
       const { type, message } = event.data.pluginMessage;
       if (type === 'onSelectionChange') {
         setSelectedComp(message);
-
-        console.log('list...', message.componentNode);
-
         setCurrentVariant(message.variantsList[0]);
       }
     };

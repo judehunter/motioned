@@ -16,25 +16,38 @@ figma.ui.onmessage = (msg) => {};
  *```
  * */
 // todo before review: add proper types here...
-const createAnimatePropsPerNode = (nodeStyles: Record<string, any>, variantsList: string[]) => {
+const createAnimatePropsPerNode = (
+  variantsList: string[],
+  stylesPerVariant: Record<string, any>,
+  transitionPerVariant: Record<string, any>
+) => {
   const variants = {};
 
   // todo: support more than 2 variants, for now we assuming there is just 2
-  for (const [nodeName, nodeVariants] of Object.entries(nodeStyles)) {
+
+  // loop through each variant for each layer
+  for (const [layerName, layerVariants] of Object.entries(stylesPerVariant)) {
     // todo before review: use a different data stucture (try Map)
-    const styleFromVariants = Object.values(nodeVariants);
+    const styleFromVariants = Object.values(layerVariants);
 
     if (styleFromVariants.length > 1) {
       // get the difference between styles 1, 2
       const diff = styleKeyDiff(...styleFromVariants);
 
       if (diff.length > 0) {
-        variants[nodeName] = Object.fromEntries(variantsList.map((a) => [a, {}]));
+        variants[layerName] = Object.fromEntries(variantsList.map((a) => [a, {}]));
 
-        for (const v of variantsList) {
-          variants[nodeName][v] = Object.fromEntries(
-            diff.map((propToAnimate) => [propToAnimate, nodeVariants[v][propToAnimate]])
-          );
+        for (const variantName of variantsList) {
+          // create key -> value map for changed values, propToAnimate -> value
+          const styleProps = diff.map((propToAnimate) => [propToAnimate, layerVariants[variantName][propToAnimate]]);
+
+          // apply transition key to variant
+          const transtion = transitionPerVariant[variantName];
+          if (transtion) {
+            styleProps.push(['transition', transitionPerVariant[variantName]]);
+          }
+
+          variants[layerName][variantName] = Object.fromEntries(styleProps);
         }
       }
     }
@@ -51,7 +64,9 @@ figma.on('selectionchange', () => {
 
     const nodes = convertFigmaNodes(selection, variantsList);
 
-    const variantsPerNode = createAnimatePropsPerNode(nodes.stylesPerVariant, variantsList);
+    const variantsPerNode = createAnimatePropsPerNode(variantsList, nodes.stylesPerVariant, nodes.transitionPerVariant);
+
+    console.log('var', variantsPerNode);
 
     figma.ui.postMessage({
       type: 'onSelectionChange',
