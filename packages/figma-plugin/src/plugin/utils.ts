@@ -1,3 +1,5 @@
+import { P, match } from 'ts-pattern';
+
 const justifyContentCssValues = {
   MIN: 'flex-start',
   MAX: 'flex-end',
@@ -11,123 +13,134 @@ const alignItemsCssValues = {
   CENTER: 'center',
 };
 
-function rgbValueToHex(value: number) {
-  return Math.floor(value * 255)
-    .toString(16)
-    .padStart(2, '0');
-}
+const filterRGBA = (color: RGBA | RGB, iterator: (value: number) => number | string) => {
+  // run iterator against each key value
+  const filtered = Object.fromEntries(
+    Object.entries(color).map(([key, val]) => [key, iterator(Math.floor(val * 255))])
+  );
+  return [filtered.r, filtered.g, filtered.b, filtered.a].filter(Boolean);
+};
 
-// todo: clean this function up
-function buildColorString(paint: Paint) {
+/** convert figma color values to css format */
+const buildColorString = (paint: Paint | { type: 'RGBA'; color: RGBA }) => {
   if (paint.type === 'SOLID') {
-    if (paint.opacity !== undefined && paint.opacity < 1) {
-      return `rgba(${Math.floor(paint.color.r * 255)}, ${Math.floor(paint.color.g * 255)}, ${Math.floor(
-        paint.color.b * 255
-      )}, ${paint.opacity})`;
+    if (paint.opacity < 1) {
+      const filtered = filterRGBA(paint.color, (val) => Math.floor(val * 255));
+      return `rgba(${filtered.join(',')}, ${paint.opacity})`;
     }
-    return `#${rgbValueToHex(paint.color.r)}${rgbValueToHex(paint.color.g)}${rgbValueToHex(paint.color.b)}`;
-  } else if ('r' in paint && 'g' in paint) {
-    return `rgba(${paint.r}, ${paint.g}, ${paint.b}, ${paint.a})`;
+
+    // convert each key value to a hex
+    const filtered = filterRGBA(paint.color, (val) =>
+      Math.floor(val * 255)
+        .toString(16)
+        .padStart(2, '0')
+    );
+
+    return `#${filtered.join('')}`;
+  } else if (paint.type === 'RGBA') {
+    return `rgba(${filterRGBA(paint.color, (val) => val).join(',')})`;
   }
 
   return '';
-}
+};
 
-// code extracted and then modified: https://github.com/kazuyaseki/figma-to-react/blob/main/src/getCssDataForTag.ts#L113
-// didn't cover all the cases...
-export const convertAttributesToProps = (node: SceneNode) => {
-  // todo before review: we probably only support components with auto layout enabled.
-  // todo before review: type this later
-  const props: Array<[string, any]> = [
-    ['left', node.x],
-    ['top', node.y],
-  ];
+/** convert figma shadow effect to css box-shadow */
+const buildBoxShadow = (effect: FigmaEffect) => {
+  const shadowType = effect.type === 'INNER_SHADOW' ? 'inset ' : '';
+
+  // inset 0px 3px 3px rgba(...)
+  return `${shadowType}${effect.offset.x}px ${effect.offset.y}px ${effect.radius}px ${buildColorString({
+    // todo: for when value is set to hex
+    type: 'RGBA',
+    color: effect.color,
+  })}`;
+};
+
+// convertion rules taken from https://github.com/kazuyaseki/figma-to-react/blob/main/src/getCssDataForTag.ts#L113
+/** replaces figma node props with react style props */
+export const convertNodePropsToStyles = (node: SceneNode) => {
+  const styles = [];
+
+  // apply left and top values
+  // todo: update for auto layout
+  styles.push(['left', node.x], ['top', node.y]);
 
   if (node.visible && node.type !== 'VECTOR') {
-    // opacity -> opacity: 0.5;
-    if (node.opacity < 1) {
-      props.push(['opacity', opacity]);
+    // opacity
+    const opacity = node.opacity as number | undefined;
+    if (opacity < 1) {
+      styles.push(['opacity', opacity]);
     }
 
-    if (node.effects.length > 0) {
-      const shadow = node.effects.find((effect) => ['DROP_SHADOW', 'INNER_SHADOW'].includes(effect.type));
-      if (shadow) {
-        console.log('shadow', shadow.color);
+    // figma effects -> shadow, blur, backdrop
+    const effects = node.effects as Array<FigmaEffect>;
 
-        props.push([
-          'boxShadow',
-          `${shadow.type === 'INNER_SHADOW' ? 'inset ' : ''}${shadow.offset.x}px ${shadow.offset.y}px ${
-            shadow.radius
-          }px ${buildColorString(shadow.color)}`,
-        ]);
-      }
-
-      const blur = node.effects.find((effect) => effect.type === 'LAYER_BLUR');
-      if (blur) {
-        props.push(['filter', `blur(${blur.radius}px)`]);
-      }
-
-      const backdrop = node.effects.find((effect) => effect.type === 'BACKGROUND_BLUR');
-      if (backdrop) {
-        props.push(['backdropFilter', `blur(${blur.radius}px)`]);
-      }
+    if (effects.length > 0) {
+      effects.forEach((eff) => {
+        styles.push(
+          match(eff)
+            .with({ type: P.union('DROP_SHADOW', 'INNER_SHADOW') }, (shadow) => ['boxShadow', buildBoxShadow(shadow)])
+            .with({ type: 'LAYER_BLUR' }, (blur) => ['filter', `blur(${blur.radius})`])
+            .with({ type: 'BACKGROUND_BLUR' }, (backdrop) => {
+              ['backdropFilter', `blur(${backdrop.radius}px)`];
+            })
+        );
+      });
     }
 
     // rotation -> transform: rotate(90deg);
-    if ('rotation' in node && node.rotation !== 0) {
-      props.push(['transform', `rotate(${Math.floor(node.rotation)}deg)`]);
+    const rotation = node.rotation as number | undefined;
+    if (typeof rotation === 'number' && rotation !== 0) {
+      styles.push(['transform', `rotate(${Math.floor(rotation)}deg)`]);
     }
 
-    if (node.type === 'FRAME' || node.type === 'INSTANCE' || node.type === 'COMPONENT') {
-      // todo before review: support tuple, for now just support single value: https://github.com/kazuyaseki/figma-to-react/blob/main/src/getCssDataForTag.ts#L206C10-L206C31
-      if (node.cornerRadius) {
-        props.push(['borderRadius', `${node.cornerRadius}px`]);
+    // ---- apply styles for this node type
+    if (['FRAME', 'INSTANCE', 'COMPONENT'].includes(node.type)) {
+      // cornerRadius -> borderRadius
+      // todo before review: cornerRadius can also be an array: https://github.com/kazuyaseki/figma-to-react/blob/main/src/getCssDataForTag.ts#L206C10-L206C31
+      const cornerRadius = node.cornerRadius as number;
+      if (cornerRadius) {
+        styles.push(['borderRadius', `${cornerRadius}px`]);
       }
 
-      if (node.layoutMode !== 'NONE') {
-        props.push(['display', 'flex']);
-        props.push(['flexDirection', node.layoutMode === 'HORIZONTAL' ? 'row' : 'column']);
-        props.push(['justifyContent', justifyContentCssValues[node.primaryAxisAlignItems]]);
-        props.push(['alignItems', alignItemsCssValues[node.counterAxisAlignItems]]);
+      // handle layout modes
+      const layoutMode = node.layoutMode as 'NONE' | 'AUTO' | 'HORIZONTAL';
+      if (layoutMode !== 'NONE') {
+        styles.push(['display', 'flex']);
+        styles.push(['flexDirection', layoutMode === 'HORIZONTAL' ? 'row' : 'column']);
+        styles.push(['justifyContent', justifyContentCssValues[node.primaryAxisAlignItems]]);
+        styles.push(['alignItems', alignItemsCssValues[node.counterAxisAlignItems]]);
 
-        if (
-          node.paddingTop === node.paddingBottom &&
-          node.paddingTop === node.paddingLeft &&
-          node.paddingTop === node.paddingRight
-        ) {
-          if (node.paddingTop > 0) {
-            props.push(['padding', `${node.paddingTop}px`]);
-          }
-        } else if (node.paddingTop === node.paddingBottom && node.paddingLeft === node.paddingRight) {
-          props.push(['padding', `${node.paddingTop}px ${node.paddingLeft}px`]);
-        } else {
-          props.push([
-            'padding',
-            `${node.paddingTop}px ${node.paddingRight}px ${node.paddingBottom}px ${node.paddingLeft}`,
-          ]);
+        // padding
+        const padding = [...new Set(node.paddingTop, node.paddingRight, node.paddingBottom, node.paddingLeft)];
+        if (padding.some((p) => p > 0)) {
+          styles.push(['padding', padding.map((p) => `${p}px`).join(' ')]);
         }
 
+        // figma itemSpacing -> gap
         if (node.primaryAxisAlignItems !== 'SPACE_BETWEEN' && node.itemSpacing > 0) {
-          props.push(['gap', `${node.itemSpacing}px`]);
+          styles.push(['gap', `${node.itemSpacing}px`]);
         }
       } else {
-        props.push(['height', `${Math.floor(node.height)}px`]);
-        props.push(['width', `${Math.floor(node.width)}px`]);
+        styles.push(['height', `${Math.floor(node.height)}px`]);
+        styles.push(['width', `${Math.floor(node.width)}px`]);
       }
 
-      if ((node.fills as Paint[]).length > 0 && (node.fills as Paint[])[0].type !== 'IMAGE') {
-        const paint = (node.fills as Paint[])[0];
-        props.push(['backgroundColor', buildColorString(paint)]);
+      // figma Fills -> background color
+      const fills = node.fills as Paint[];
+      if (fills.length > 0 && fills[0].type !== 'IMAGE') {
+        styles.push(['backgroundColor', buildColorString(fills[0])]);
       }
 
-      if ((node.strokes as Paint[]).length > 0) {
-        const paint = (node.strokes as Paint[])[0];
-        props.push(['border', `${node.strokeWeight}px solid ${buildColorString(paint)}`]);
+      // figma Stroke -> border
+      const strokes = node.strokes as Paint[];
+      if (strokes.length > 0) {
+        styles.push(['border', `${node.strokeWeight}px solid ${buildColorString(strokes[0])}`]);
       }
     }
   }
 
-  return Object.fromEntries(props);
+  return Object.fromEntries(styles);
 };
 
 export type FigmaNodeTypesWithProps = Partial<
@@ -143,12 +156,17 @@ export type FigmaNodeTypesWithProps = Partial<
   >
 >;
 
+/**
+ * transverse figma node stucture and filter in only children and variants
+ * @returns {Object} tree: `{ Frame5: { children: [{ SubFrame: { ... } }], styles: { opactiy: 0, ... } } }`
+ * @returns {Object} stylesPerVariant: `{ Frame5: { switch-on: { opacity: 0 }, switch-off: { opacity: 1 } } }`
+ */
 export const convertFigmaNodes = (
   componentSetNode: SceneNode & { children?: SceneNode[]; id: string },
   variants: string[]
 ) => {
   // variant name -> styles
-  const variantsMap = {};
+  const stylesPerVariant = {};
 
   let currentVariant = variants[0];
 
@@ -161,7 +179,7 @@ export const convertFigmaNodes = (
 
     const singleNode = {
       children: node.children ? node.children.map(buildFigmaNodeTree) : null,
-      styles: convertAttributesToProps(node),
+      styles: convertNodePropsToStyles(node),
       name: node.name,
       id: node.id,
       figmaNodeType: node.type,
@@ -169,11 +187,11 @@ export const convertFigmaNodes = (
 
     if (node.type !== 'COMPONENT_SET') {
       // variantsMap[node.name][currentVariant] = singleNode.styles;
-      if (variantsMap[node.name] === undefined) {
-        variantsMap[node.name] = {};
+      if (stylesPerVariant[node.name] === undefined) {
+        stylesPerVariant[node.name] = {};
       }
 
-      variantsMap[node.name][currentVariant] = singleNode.styles;
+      stylesPerVariant[node.name][currentVariant] = singleNode.styles;
     }
 
     return { [node.name]: singleNode };
@@ -181,9 +199,10 @@ export const convertFigmaNodes = (
 
   const tree = buildFigmaNodeTree(componentSetNode);
 
-  return { tree, variantStyles: variantsMap };
+  return { tree, stylesPerVariant };
 };
 
+/** get the difference between two styles and return the keys that change as an array */
 export const styleKeyDiff = (o1, o2) => {
   const isEqual = (o1, o2) => JSON.stringify(o1) === JSON.stringify(o2);
 

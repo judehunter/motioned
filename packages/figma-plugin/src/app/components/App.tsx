@@ -29,6 +29,9 @@ function App() {
       const { type, message } = event.data.pluginMessage;
       if (type === 'onSelectionChange') {
         setSelectedComp(message);
+
+        console.log('list...', message.componentNode);
+
         setCurrentVariant(message.variantsList[0]);
       }
     };
@@ -46,14 +49,12 @@ function App() {
 
                 const variantProp = selectedComp.variantsPerNode[name];
 
-                console.log(name, opts.styles);
-
                 return (
                   <Comp
                     {...(variantProp
                       ? {
-                          variant: variantProp,
-                          // animate: currentVariant
+                          variants: variantProp,
+                          animate: currentVariant,
                         }
                       : {})}
                     key={opts.id}

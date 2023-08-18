@@ -4,7 +4,17 @@ figma.showUI(__html__, { height: 500, width: 500 });
 
 figma.ui.onmessage = (msg) => {};
 
-/** takes each node styles and generates  */
+/**
+ * takes each node styles and generates a difference between the variants,
+ * ... returns variants with just the values that have changed.
+ *
+ * e.g.
+ * ```ts
+ * Frame5: { on: { opacity: 1, height: "100px" },  off: { opacity: 0, height: "100px" } }
+ * // diff
+ * Frame5: { on: { opacity: 1 }, off: { opacity: 0 } }
+ *```
+ * */
 // todo before review: add proper types here...
 const createAnimatePropsPerNode = (nodeStyles: Record<string, any>, variantsList: string[]) => {
   const variants = {};
@@ -40,7 +50,8 @@ figma.on('selectionchange', () => {
     const variantsList = Object.values(selection.variantGroupProperties)[0].values;
 
     const nodes = convertFigmaNodes(selection, variantsList);
-    const variantsPerNode = createAnimatePropsPerNode(nodes.variantStyles, variantsList);
+
+    const variantsPerNode = createAnimatePropsPerNode(nodes.stylesPerVariant, variantsList);
 
     figma.ui.postMessage({
       type: 'onSelectionChange',
