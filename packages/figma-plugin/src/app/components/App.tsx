@@ -19,8 +19,35 @@ const FIGMA_NODE_TO_REACT = {
   COMPONENT: React.Fragment,
 };
 
+const ChildLayer = ({
+  child,
+  variantsPerNode,
+  currentVariant,
+}: {
+  child: FigmaNodeTypesWithProps;
+  variantsPerNode: PluginMessage['message']['variantsPerNode'];
+  currentVariant: string;
+}) => {
+  const [[name, opts]] = Object.entries(child);
+  const Comp = FIGMA_NODE_TO_REACT[opts.figmaNodeType];
+
+  const variants = variantsPerNode[name];
+
+  return (
+    <Comp
+      {...(variants
+        ? {
+            variants,
+            animate: currentVariant,
+          }
+        : {})}
+      key={opts.id}
+      style={{ position: 'absolute', ...opts.styles }}
+    />
+  );
+};
+
 function App() {
-  // in each component check if they have a variant
   const [selectedComp, setSelectedComp] = React.useState<PluginMessage['message']>(null);
   const [currentVariant, setCurrentVariant] = React.useState('');
 
@@ -38,30 +65,29 @@ function App() {
     <div style={{ paddingTop: 4 }}>
       {selectedComp ? (
         <>
-          {Object.entries(selectedComp.componentNode).map(([_, component]) => (
-            <div key={component.id} style={{ position: 'relative', ...component.styles }}>
-              {component.children.map((child) => {
-                const [[name, opts]] = Object.entries(child);
-                const Comp = FIGMA_NODE_TO_REACT[opts.figmaNodeType];
+          {Object.entries(selectedComp.componentNode).map(([_, component]) => {
+            const variants = selectedComp.variantsPerNode['COMPONENT_ROOT'];
 
-                const variantProp = selectedComp.variantsPerNode[name];
+            const Comp = variants ? m.div : 'div';
 
-                return (
-                  <Comp
-                    {...(variantProp
-                      ? {
-                          variants: variantProp,
-                          animate: currentVariant,
-                        }
-                      : {})}
-                    key={opts.id}
-                    // todo before review: update this for auto-layouts
-                    style={{ position: 'absolute', ...opts.styles }}
-                  />
-                );
-              })}
-            </div>
-          ))}
+            return (
+              <Comp
+                key={component.id}
+                style={{ position: 'relative', ...component.styles }}
+                {...(variants
+                  ? {
+                      variants,
+                      animate: currentVariant,
+                    }
+                  : {})}
+              >
+                {/* Component children */}
+                {component.children.map((child) => (
+                  <ChildLayer {...{ child, currentVariant }} variantsPerNode={selectedComp.variantsPerNode} />
+                ))}
+              </Comp>
+            );
+          })}
 
           <div style={{ marginTop: 40 }}>
             {selectedComp.variantsList.map((v) => (

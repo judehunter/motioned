@@ -38,8 +38,6 @@ const buildColorString = (paint: Paint | { type: 'RGBA'; color: RGBA }) => {
   } else if (paint.type === 'RGBA') {
     return `rgba(${filterRGBA(paint.color, (val) => val).join(',')})`;
   }
-
-  return '';
 };
 
 /** convert figma shadow effect to css box-shadow */
@@ -205,7 +203,7 @@ export const convertFigmaNodes = (
   // transverse through the figma document tree and replace each node with a react component
   const buildFigmaNodeTree = (node: SceneNode & { children?: SceneNode[]; id: string }): FigmaNodeTypesWithProps => {
     // update current variant on a new component set.
-    if (node.variantProperties) {
+    if (node.type === 'COMPONENT' && node.variantProperties) {
       currentVariant = Object.values(node.variantProperties)[0];
     }
 
@@ -226,8 +224,13 @@ export const convertFigmaNodes = (
         transitionPerVariant[currentVariant] = transition;
       }
 
+      const isComponent = node.type === 'COMPONENT' && !!node.variantProperties;
+
+      // components share variant styles, so store it at the same location.
+      const variantNodeName = isComponent ? 'COMPONENT_ROOT' : node.name;
+
       // e.g. { Frame5: { [currentVariant -> on]: {...} } }
-      stylesPerVariant[node.name] = Object.assign({}, stylesPerVariant[node.name], {
+      stylesPerVariant[variantNodeName] = Object.assign({}, stylesPerVariant[variantNodeName], {
         [currentVariant]: singleNode.styles,
       });
     }

@@ -32,7 +32,12 @@ const createAnimatePropsPerNode = (
 
     if (styleFromVariants.length > 1) {
       // get the difference between styles 1, 2
-      const diff = styleKeyDiff(...styleFromVariants);
+      let diff = styleKeyDiff(...styleFromVariants);
+
+      // exclude x and y animation for component variants
+      if (layerName === 'COMPONENT_ROOT') {
+        diff = diff.filter((prop) => !['top', 'left'].includes(prop));
+      }
 
       if (diff.length > 0) {
         variants[layerName] = Object.fromEntries(variantsList.map((a) => [a, {}]));
@@ -59,14 +64,14 @@ const createAnimatePropsPerNode = (
 figma.on('selectionchange', () => {
   const selection = figma.currentPage.selection[0];
 
+  console.log('select', selection);
+
   if (selection.type === 'COMPONENT_SET') {
     const variantsList = Object.values(selection.variantGroupProperties)[0].values;
 
     const nodes = convertFigmaNodes(selection, variantsList);
 
     const variantsPerNode = createAnimatePropsPerNode(variantsList, nodes.stylesPerVariant, nodes.transitionPerVariant);
-
-    console.log('var', variantsPerNode);
 
     figma.ui.postMessage({
       type: 'onSelectionChange',
