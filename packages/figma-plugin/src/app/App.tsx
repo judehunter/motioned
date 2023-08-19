@@ -1,9 +1,8 @@
 import React from 'react';
-import '../styles/ui.css';
 
 import { m } from 'motioned';
 
-import type { FigmaNodeTypesWithProps } from '../../plugin/utils';
+import type { FigmaNodeTypesWithProps } from '../plugin/utils';
 
 type PluginMessage = {
   type: 'onSelectionChange';
@@ -48,7 +47,8 @@ const ChildLayer = ({
 };
 
 function App() {
-  const [selectedComp, setSelectedComp] = React.useState<PluginMessage['message']>(null);
+  const [selectedComp, setSelectedComp] =
+    React.useState<PluginMessage['message']>(null);
   const [currentVariant, setCurrentVariant] = React.useState('');
 
   React.useEffect(() => {
@@ -83,7 +83,10 @@ function App() {
               >
                 {/* Component children */}
                 {component.children.map((child) => (
-                  <ChildLayer {...{ child, currentVariant }} variantsPerNode={selectedComp.variantsPerNode} />
+                  <ChildLayer
+                    {...{ child, currentVariant }}
+                    variantsPerNode={selectedComp.variantsPerNode}
+                  />
                 ))}
               </Comp>
             );
@@ -94,7 +97,11 @@ function App() {
               <button
                 key={v}
                 onClick={() => setCurrentVariant(v)}
-                style={currentVariant === v ? { backgroundColor: '#000', color: 'white' } : {}}
+                style={
+                  currentVariant === v
+                    ? { backgroundColor: '#000', color: 'white' }
+                    : {}
+                }
               >
                 {v}
               </button>

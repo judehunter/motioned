@@ -2,44 +2,52 @@
   "name": "figma-plugin",
   "version": "1.0.0",
   "description": "Motioned figma plugin",
-  "license": "ISC",
+  "license": "MIT",
   "scripts": {
-    "build": "webpack --mode=production",
-    "build:watch": "webpack --mode=development --watch",
-    "prettier:format": "prettier --write '**/*.{js,jsx,ts,tsx,css,json}' "
+    "build": "webpack --mode=production --define-process-env-node-env=production",
+    "build:dev": "webpack --mode=development",
+    "build:prod": "webpack --mode=production --define-process-env-node-env=production",
+    "dev": "NODE_ENV=development webpack --mode=development --watch",
+    "watch": "webpack --watch"
   },
   "dependencies": {
+    "create-file-webpack": "^1.0.2",
+    "html-loader": "^4.2.0",
+    "html-webpack-inline-source-plugin": "^0.0.10",
+    "postcss": "^8.4.19",
+    "postcss-loader": "^7.0.2",
+    "postcss-preset-env": "^7.8.3",
+    "postcss-scss": "^4.0.6",
+    "process": "^0.11.10",
     "react": "^18.2.0",
+    "react-dev-utils": "^12.0.1",
     "react-dom": "^18.2.0",
     "motioned": "workspace:*",
     "ts-pattern": "5.0.5"
   },
   "devDependencies": {
-    "@figma/plugin-typings": "1.74.0",
-    "@types/react": "^18.0.17",
-    "@types/react-dom": "^18.0.6",
-    "css-loader": "^6.7.1",
+    "@figma/plugin-typings": "^1.56.0",
+    "@types/react-dom": "^18.0.9",
+    "@webpack-cli/generators": "^3.0.0",
+    "css-loader": "^6.7.2",
+    "file-loader": "^6.2.0",
     "html-webpack-plugin": "^5.5.0",
-    "husky": "^8.0.1",
-    "lint-staged": "^13.0.3",
-    "prettier": "^2.7.1",
-    "react-dev-utils": "^12.0.1",
+    "inline-source-webpack-plugin": "^3.0.1",
+    "mini-css-extract-plugin": "^2.7.1",
     "style-loader": "^3.3.1",
-    "ts-loader": "^9.3.1",
-    "typescript": "^4.7.4",
-    "url-loader": "^4.1.1",
-    "webpack": "^5.74.0",
-    "webpack-cli": "^4.10.0"
+    "tailwindcss": "^3.2.4",
+    "ts-loader": "^9.4.2",
+    "typescript": "^4.9.3",
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.0"
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
-  "lint-staged": {
-    "src/**/*.{js,jsx,ts,tsx,css,json}": [
-      "prettier --write",
-      "git add"
-    ]
+  "figmaPlugin": {
+    "name": "Motioned Figma Plugin",
+    "api": "1.0.0",
+    "main": "./code.js",
+    "editorType": [
+      "figma"
+    ],
+    "ui": "./ui.html"
   }
 }

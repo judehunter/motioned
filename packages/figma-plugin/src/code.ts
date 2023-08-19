@@ -1,4 +1,4 @@
-import { convertFigmaNodes, styleKeyDiff } from './utils';
+import { convertFigmaNodes, styleKeyDiff } from './plugin/utils';
 
 figma.showUI(__html__, { height: 500, width: 500 });
 
@@ -19,7 +19,7 @@ figma.ui.onmessage = (msg) => {};
 const createAnimatePropsPerNode = (
   variantsList: string[],
   stylesPerVariant: Record<string, any>,
-  transitionPerVariant: Record<string, any>
+  transitionPerVariant: Record<string, any>,
 ) => {
   const variants = {};
 
@@ -40,11 +40,16 @@ const createAnimatePropsPerNode = (
       }
 
       if (diff.length > 0) {
-        variants[layerName] = Object.fromEntries(variantsList.map((a) => [a, {}]));
+        variants[layerName] = Object.fromEntries(
+          variantsList.map((a) => [a, {}]),
+        );
 
         for (const variantName of variantsList) {
           // create key -> value map for changed values, propToAnimate -> value
-          const styleProps = diff.map((propToAnimate) => [propToAnimate, layerVariants[variantName][propToAnimate]]);
+          const styleProps = diff.map((propToAnimate) => [
+            propToAnimate,
+            layerVariants[variantName][propToAnimate],
+          ]);
 
           // apply transition key to variant
           const transtion = transitionPerVariant[variantName];
@@ -67,11 +72,16 @@ figma.on('selectionchange', () => {
   console.log('select', selection);
 
   if (selection.type === 'COMPONENT_SET') {
-    const variantsList = Object.values(selection.variantGroupProperties)[0].values;
+    const variantsList = Object.values(selection.variantGroupProperties)[0]
+      .values;
 
     const nodes = convertFigmaNodes(selection, variantsList);
 
-    const variantsPerNode = createAnimatePropsPerNode(variantsList, nodes.stylesPerVariant, nodes.transitionPerVariant);
+    const variantsPerNode = createAnimatePropsPerNode(
+      variantsList,
+      nodes.stylesPerVariant,
+      nodes.transitionPerVariant,
+    );
 
     figma.ui.postMessage({
       type: 'onSelectionChange',
