@@ -15,9 +15,7 @@ const alignItemsCssValues = {
 
 const filterRGBA = (color: RGBA | RGB, iterator: (value: number) => number | string) => {
   // run iterator against each key value
-  const filtered = Object.fromEntries(
-    Object.entries(color).map(([key, val]) => [key, iterator(Math.floor(val * 255))])
-  );
+  const filtered = Object.fromEntries(Object.entries(color).map(([key, val]) => [key, iterator(val)]));
   return [filtered.r, filtered.g, filtered.b, filtered.a].filter(Boolean);
 };
 
