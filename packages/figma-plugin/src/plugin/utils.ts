@@ -174,18 +174,13 @@ export const convertNodePropsToStyles = (node: SceneNode) => {
   return Object.fromEntries(styles);
 };
 
-export type FigmaNodeTypesWithProps = Partial<
-  Record<
-    string,
-    {
-      children: FigmaNodeTypesWithProps[];
-      styles: Record<string, any>;
-      name: string;
-      id: string;
-      figmaNodeType: string;
-    }
-  >
->;
+export type LayerNode = {
+  children: LayerNode[];
+  styles: Record<string, any>;
+  name: string;
+  id: string;
+  figmaNodeType: string;
+};
 
 /**
  * generate node structure with children and variants
@@ -196,18 +191,16 @@ export const convertFigmaNodes = (
   // transverse through the figma document tree and replace each node with a react component
   const buildFigmaNodeTree = (
     node: SceneNode & { children?: SceneNode[]; id: string },
-  ): FigmaNodeTypesWithProps => {
+  ): LayerNode => {
     const styles = convertNodePropsToStyles(node);
 
-    const singleNode = {
+    return {
       children: node.children ? node.children.map(buildFigmaNodeTree) : null,
       styles,
       name: node.name,
       id: node.id,
       figmaNodeType: node.type,
     };
-
-    return { [node.name]: singleNode };
   };
 
   return buildFigmaNodeTree(componentSetNode);

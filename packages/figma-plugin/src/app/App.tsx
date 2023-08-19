@@ -2,19 +2,19 @@ import React from 'react';
 
 import { m } from 'motioned';
 
-import type { FigmaNodeTypesWithProps } from '../plugin/utils';
+import type { LayerNode } from '../plugin/utils';
 
 type PluginMessage = {
   type: 'onSelectionChange';
   message: {
-    layerNode: FigmaNodeTypesWithProps;
+    layerNode: LayerNode;
   };
 };
 
 const Hierarchy = ({
   layer,
 }: {
-  layer: PluginMessage['message']['layerNode'][string];
+  layer: PluginMessage['message']['layerNode'];
 }) => {
   return (
     <div>
@@ -22,10 +22,10 @@ const Hierarchy = ({
         {'-'}
         {layer.name}
       </div>
-      {layer?.children.length > 0 ? (
+      {layer.children.length > 0 ? (
         <div className="pl-4">
           {layer.children.map((l) => (
-            <Hierarchy layer={Object.values(l)[0]} />
+            <Hierarchy key={l.id} layer={l} />
           ))}
         </div>
       ) : null}
@@ -52,31 +52,29 @@ function App() {
         <div>
           {layerNode ? (
             <>
-              {Object.entries(layerNode).map(([_, layer]) => (
+              {
                 <m.div
-                  key={layer.id}
+                  key={layerNode.id}
                   style={{
                     position: 'relative',
-                    ...layer.styles,
+                    ...layerNode.styles,
                     top: 0,
                     left: 0,
                   }}
                   animate={{}}
                 >
                   {/* Layer children */}
-                  {layer.children.map((child) => {
-                    const [[_, opts]] = Object.entries(child);
-
+                  {layerNode.children.map((child) => {
                     return (
                       <m.div
-                        key={opts.id}
-                        style={{ position: 'absolute', ...opts.styles }}
+                        key={child.id}
+                        style={{ position: 'absolute', ...child.styles }}
                         animate={{}}
                       />
                     );
                   })}
                 </m.div>
-              ))}
+              }
             </>
           ) : (
             <div>Select a layer</div>
@@ -84,11 +82,7 @@ function App() {
         </div>
       </div>
 
-      {layerNode
-        ? Object.values(layerNode).map((layer) => {
-            return <Hierarchy {...{ layer }} />;
-          })
-        : null}
+      {layerNode ? <Hierarchy layer={layerNode} /> : null}
     </div>
   );
 }
