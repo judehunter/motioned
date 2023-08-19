@@ -22,9 +22,9 @@ const Hierarchy = ({
         {'-'}
         {layer.name}
       </div>
-      {layer.children.length > 0 ? (
+      {layer.children?.length > 0 ? (
         <div className="pl-4">
-          {layer.children.map((l) => (
+          {layer.children?.map((l) => (
             <Hierarchy key={l.id} layer={l} />
           ))}
         </div>
@@ -64,7 +64,7 @@ function App() {
                   animate={{}}
                 >
                   {/* Layer children */}
-                  {layerNode.children.map((child) => {
+                  {layerNode.children?.map((child) => {
                     return (
                       <m.div
                         key={child.id}

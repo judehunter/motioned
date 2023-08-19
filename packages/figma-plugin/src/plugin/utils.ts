@@ -68,6 +68,9 @@ export const convertNodePropsToStyles = (node: SceneNode) => {
   styles.push(['left', node.x], ['top', node.y]);
 
   if (node.visible && node.type !== 'VECTOR') {
+    styles.push(['height', `${Math.floor(node.height)}px`]);
+    styles.push(['width', `${Math.floor(node.width)}px`]);
+
     // opacity
     const opacity = node.opacity as number | undefined;
     if (opacity < 1) {
@@ -103,15 +106,30 @@ export const convertNodePropsToStyles = (node: SceneNode) => {
       styles.push(['transform', `rotate(${Math.floor(rotation)}deg)`]);
     }
 
+    // cornerRadius -> borderRadius
+    // todo before review: cornerRadius can also be an array: https://github.com/kazuyaseki/figma-to-react/blob/main/src/getCssDataForTag.ts#L206C10-L206C31
+    const cornerRadius = node.cornerRadius as number;
+    if (cornerRadius) {
+      styles.push(['borderRadius', `${cornerRadius}px`]);
+    }
+
+    // figma Fills -> background color
+    const fills = node.fills as Paint[];
+    if (fills.length > 0 && fills[0].type !== 'IMAGE') {
+      styles.push(['backgroundColor', buildColorString(fills[0])]);
+    }
+
+    // figma Stroke -> border
+    const strokes = node.strokes as Paint[];
+    if (strokes.length > 0) {
+      styles.push([
+        'border',
+        `${node.strokeWeight}px solid ${buildColorString(strokes[0])}`,
+      ]);
+    }
+
     // ---- apply styles for this node type
     if (['FRAME', 'INSTANCE', 'COMPONENT'].includes(node.type)) {
-      // cornerRadius -> borderRadius
-      // todo before review: cornerRadius can also be an array: https://github.com/kazuyaseki/figma-to-react/blob/main/src/getCssDataForTag.ts#L206C10-L206C31
-      const cornerRadius = node.cornerRadius as number;
-      if (cornerRadius) {
-        styles.push(['borderRadius', `${cornerRadius}px`]);
-      }
-
       // handle layout modes
       const layoutMode = node.layoutMode as 'NONE' | 'AUTO' | 'HORIZONTAL';
       if (layoutMode !== 'NONE') {
@@ -149,24 +167,6 @@ export const convertNodePropsToStyles = (node: SceneNode) => {
         ) {
           styles.push(['gap', `${node.itemSpacing}px`]);
         }
-      } else {
-        styles.push(['height', `${Math.floor(node.height)}px`]);
-        styles.push(['width', `${Math.floor(node.width)}px`]);
-      }
-
-      // figma Fills -> background color
-      const fills = node.fills as Paint[];
-      if (fills.length > 0 && fills[0].type !== 'IMAGE') {
-        styles.push(['backgroundColor', buildColorString(fills[0])]);
-      }
-
-      // figma Stroke -> border
-      const strokes = node.strokes as Paint[];
-      if (strokes.length > 0) {
-        styles.push([
-          'border',
-          `${node.strokeWeight}px solid ${buildColorString(strokes[0])}`,
-        ]);
       }
     }
   }
