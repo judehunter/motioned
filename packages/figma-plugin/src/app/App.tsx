@@ -7,108 +7,88 @@ import type { FigmaNodeTypesWithProps } from '../plugin/utils';
 type PluginMessage = {
   type: 'onSelectionChange';
   message: {
-    componentNode: FigmaNodeTypesWithProps;
-    variantsPerNode: Record<string, any>;
-    variantsList: string[];
+    layerNode: FigmaNodeTypesWithProps;
   };
 };
 
-const FIGMA_NODE_TO_REACT = {
-  FRAME: m.div,
-  COMPONENT: React.Fragment,
-};
-
-const ChildLayer = ({
-  child,
-  variantsPerNode,
-  currentVariant,
+const Hierarchy = ({
+  layer,
 }: {
-  child: FigmaNodeTypesWithProps;
-  variantsPerNode: PluginMessage['message']['variantsPerNode'];
-  currentVariant: string;
+  layer: PluginMessage['message']['layerNode'][string];
 }) => {
-  const [[name, opts]] = Object.entries(child);
-  const Comp = FIGMA_NODE_TO_REACT[opts.figmaNodeType];
-
-  const variants = variantsPerNode[name];
-
   return (
-    <Comp
-      {...(variants
-        ? {
-            variants,
-            animate: currentVariant,
-          }
-        : {})}
-      key={opts.id}
-      style={{ position: 'absolute', ...opts.styles }}
-    />
+    <div>
+      <div>
+        {'-'}
+        {layer.name}
+      </div>
+      {layer?.children.length > 0 ? (
+        <div className="pl-4">
+          {layer.children.map((l) => (
+            <Hierarchy layer={Object.values(l)[0]} />
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 };
 
 function App() {
-  const [selectedComp, setSelectedComp] =
-    React.useState<PluginMessage['message']>(null);
-  const [currentVariant, setCurrentVariant] = React.useState('');
+  const [layerNode, setLayerNode] =
+    React.useState<PluginMessage['message']['layerNode']>(null);
 
   React.useEffect(() => {
     window.onmessage = (event: { data: { pluginMessage: PluginMessage } }) => {
       const { type, message } = event.data.pluginMessage;
       if (type === 'onSelectionChange') {
-        setSelectedComp(message);
-        setCurrentVariant(message.variantsList[0]);
+        setLayerNode(message.layerNode);
       }
     };
   }, []);
 
   return (
     <div style={{ paddingTop: 4 }}>
-      {selectedComp ? (
-        <>
-          {Object.entries(selectedComp.componentNode).map(([_, component]) => {
-            const variants = selectedComp.variantsPerNode['COMPONENT_ROOT'];
+      <div className="flex justify-center">
+        <div>
+          {layerNode ? (
+            <>
+              {Object.entries(layerNode).map(([_, layer]) => (
+                <m.div
+                  key={layer.id}
+                  style={{
+                    position: 'relative',
+                    ...layer.styles,
+                    top: 0,
+                    left: 0,
+                  }}
+                  animate={{}}
+                >
+                  {/* Layer children */}
+                  {layer.children.map((child) => {
+                    const [[_, opts]] = Object.entries(child);
 
-            const Comp = variants ? m.div : 'div';
+                    return (
+                      <m.div
+                        key={opts.id}
+                        style={{ position: 'absolute', ...opts.styles }}
+                        animate={{}}
+                      />
+                    );
+                  })}
+                </m.div>
+              ))}
+            </>
+          ) : (
+            <div>Select a layer</div>
+          )}
+        </div>
+      </div>
 
-            return (
-              <Comp
-                key={component.id}
-                style={{ position: 'relative', ...component.styles }}
-                {...(variants
-                  ? {
-                      variants,
-                      animate: currentVariant,
-                    }
-                  : {})}
-              >
-                {/* Component children */}
-                {component.children.map((child) => (
-                  <ChildLayer
-                    {...{ child, currentVariant }}
-                    variantsPerNode={selectedComp.variantsPerNode}
-                  />
-                ))}
-              </Comp>
-            );
-          })}
-
-          <div style={{ marginTop: 40 }}>
-            {selectedComp.variantsList.map((v) => (
-              <button
-                key={v}
-                onClick={() => setCurrentVariant(v)}
-                style={
-                  currentVariant === v
-                    ? { backgroundColor: '#000', color: 'white' }
-                    : {}
-                }
-              >
-                {v}
-              </button>
-            ))}
-          </div>
-        </>
-      ) : null}
+      {layerNode
+        ? Object.values(layerNode).map((layer) => {
+            return <Hierarchy {...{ layer }} />;
+          })
+        : null}
     </div>
   );
 }
