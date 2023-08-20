@@ -115,7 +115,7 @@ const useAnimation = (
         );
 
         const transition =
-          transitionObj?.[name as AnimatePropertyName] ?? transitionObj;
+          transitionObj?.[_name as AnimatePropertyName] ?? transitionObj;
 
         let easing = asSelf(
           transition?.easing ?? 'ease-in-out',

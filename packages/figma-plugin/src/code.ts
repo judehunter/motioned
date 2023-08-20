@@ -7,6 +7,10 @@ figma.ui.onmessage = (msg) => {};
 figma.on('selectionchange', () => {
   const selection = figma.currentPage.selection[0];
 
+  if (!selection) {
+    return;
+  }
+
   const layerNode = convertFigmaNodes(selection);
 
   figma.ui.postMessage({

@@ -1,6 +1,6 @@
-import React from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { m } from 'motioned';
+import { AnimateOptions, m } from 'motioned';
 
 import type { LayerNode } from '../plugin/utils';
 
@@ -87,101 +87,260 @@ export const ArrowPath = () => {
   );
 };
 
-type Animation = Record<string, { [x: string]: string }>;
+// export const NewSetting = ({
+//   setAnimations,
+//   layerId,
+// }: {
+//   setAnimations: React.Dispatch<React.SetStateAction<Animation>>;
+//   layerId: string;
+// }) => {
+//   const [name, setName] = useState('');
+//   const [value, setValue] = useState('');
 
-export const NewSetting = ({
-  setAnimations,
-  layerId,
+//   const [show, setShow] = useState(false);
+
+//   const addSetting = () => {
+//     setAnimations((prevState) => ({
+//       ...prevState,
+//       [layerId]: { ...prevState[layerId], [name]: value },
+//     }));
+
+//     setName('');
+//     setValue('');
+
+//     setShow(false);
+//   };
+
+//   return (
+//     <>
+//       <button onClick={() => setShow((prevState) => !prevState)}>+</button>
+//       {show ? (
+//         <div className="flex">
+//           {/* todo: make this a select element */}
+//           <input
+//             type="text"
+//             value={name}
+//             placeholder="Prop name..."
+//             onChange={(ev) => setName(ev.target.value)}
+//           />
+//           <input
+//             type="text"
+//             value={value}
+//             placeholder="Prop value..."
+//             onChange={(ev) => setValue(ev.target.value)}
+//           />
+//           <button
+//             className={`${
+//               !name || !value ? 'text-gray-400' : 'text-green-500'
+//             }`}
+//             onClick={() => addSetting()}
+//           >
+//             <CheckIcon />
+//           </button>
+//         </div>
+//       ) : null}
+//     </>
+//   );
+// };
+type Property = {
+  name: string;
+  value: string;
+  easing: string;
+  duration: number;
+};
+const AnimProperty = ({
+  property,
+  onChange,
 }: {
-  setAnimations: React.Dispatch<React.SetStateAction<Animation>>;
-  layerId: string;
+  property: Property;
+  onChange: (property: Property) => void;
 }) => {
-  const [name, setName] = React.useState('');
-  const [value, setValue] = React.useState('');
-
-  const [show, setShow] = React.useState(false);
-
-  const addSetting = () => {
-    setAnimations((prevState) => ({
-      ...prevState,
-      [layerId]: { ...prevState[layerId], [name]: value },
-    }));
-
-    setName('');
-    setValue('');
-
-    setShow(false);
-  };
-
   return (
-    <>
-      <button onClick={() => setShow((prevState) => !prevState)}>+</button>
-      {show ? (
-        <div className="flex">
-          {/* todo: make this a select element */}
-          <input
-            type="text"
-            value={name}
-            placeholder="Prop name..."
-            onChange={(ev) => setName(ev.target.value)}
-          />
-          <input
-            type="text"
-            value={value}
-            placeholder="Prop value..."
-            onChange={(ev) => setValue(ev.target.value)}
-          />
-          <button
-            className={`${
-              !name || !value ? 'text-gray-400' : 'text-green-500'
-            }`}
-            onClick={() => addSetting()}
-          >
-            <CheckIcon />
-          </button>
-        </div>
-      ) : null}
-    </>
+    <div className="flex items-center mb-2 gap-3">
+      <input
+        value={property.name}
+        onChange={(e) => onChange({ ...property, name: e.target.value })}
+        className="border-b-2 border-gray-400 bg-transparent outline-none w-[100px]"
+        placeholder="name"
+      />
+      <div>:</div>
+      <input
+        value={property.value}
+        onChange={(e) => onChange({ ...property, value: e.target.value })}
+        className="border-b-2 border-gray-400 bg-transparent outline-none w-[100px]"
+        placeholder="value"
+      />
+      <div className="flex items-center">
+        <input
+          value={property.duration}
+          type="number"
+          onChange={(e) =>
+            onChange({ ...property, duration: e.target.valueAsNumber })
+          }
+          className="border-b-2 border-gray-400 bg-transparent outline-none text-right w-[50px]"
+          placeholder="duration"
+        />
+        <span className="ml-1">ms</span>
+      </div>
+      <select
+        value={property.easing}
+        onChange={(e) => onChange({ ...property, easing: e.target.value })}
+        className="border-b-2 border-gray-400 bg-transparent outline-none w-[140px]"
+      >
+        <option value="ease">ease</option>
+        <option value="ease-in">ease-in</option>
+        <option value="ease-out">ease-out</option>
+        <option value="ease-in-out">ease-in-out</option>
+        <option value="linear">linear</option>
+      </select>
+    </div>
   );
 };
 
+const LayerNodeSettings = ({
+  layerNode,
+  animateOptions,
+  onChangeAnimateOptions,
+}: {
+  layerNode: LayerNode;
+  animateOptions: AnimateOptions;
+  onChangeAnimateOptions: (animateOptions: AnimateOptions) => void;
+}) => {
+  const { transition = {}, ...animateProperties } = animateOptions;
+
+  const [properties, setProperties] = useState<Property[]>(undefined);
+
+  useEffect(() => {
+    const newProperties = Object.entries(animateProperties).map(
+      ([name, value]) => ({ name, value, ...transition[name] }),
+    );
+    setProperties(newProperties);
+  }, [animateOptions]);
+
+  const save = () => {
+    const newProperties = Object.fromEntries(
+      properties.map(({ name, value }) => [name, value]),
+    );
+    const newTransitions = Object.fromEntries(
+      properties.map(({ name, easing, duration }) => [
+        name,
+        { easing, duration },
+      ]),
+    );
+    onChangeAnimateOptions({
+      ...animateOptions,
+      ...newProperties,
+      transition: { ...transition, ...newTransitions },
+    });
+  };
+  const saveRef = useRef(save);
+  saveRef.current = save;
+
+  // console.log({ properties });
+
+  const updateProperty = (idx: number, property: Property) => {
+    const newProperties = [...properties];
+    newProperties[idx] = property;
+    setProperties(newProperties);
+  };
+
+  useEffect(() => {
+    window.addEventListener('keypress', function (event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        saveRef.current();
+      }
+    });
+  }, []);
+
+  if (!properties) return null;
+
+  return (
+    <div className="my-5">
+      <div className="font-medium">{layerNode.name}</div>
+
+      {properties.map(({ value, duration, easing, name }, idx) => (
+        <AnimProperty
+          key={idx}
+          property={{
+            name,
+            value: '' + value,
+            easing,
+            duration,
+          }}
+          onChange={(x) => updateProperty(idx, x)}
+        />
+      ))}
+      <button
+        onClick={() => {
+          setProperties([
+            ...properties,
+            { name: '', value: '', duration: 300, easing: 'ease' },
+          ]);
+        }}
+      >
+        <span className="text-slate-500">+ new property</span>
+      </button>
+    </div>
+  );
+};
+
+const walkNodeTree = (node: LayerNode) => {
+  if (!node) return [];
+  const nodes = [node];
+  if (node.children) {
+    for (const child of node.children) {
+      nodes.push(...walkNodeTree(child));
+    }
+  }
+  return nodes;
+};
+
 function App() {
-  const [currentLayerNode, setCurrentLayerNode] =
-    React.useState<LayerNode>(null);
-  const [prevLayerNodes, setPrevLayerNodes] = React.useState<LayerNode[]>([]);
+  const [currentLayerNode, setCurrentLayerNode] = useState<LayerNode>(null);
 
-  const [animations, setAnimations] = React.useState<Animation>({});
+  const treeList = useMemo(
+    () => walkNodeTree(currentLayerNode),
+    [currentLayerNode],
+  );
 
-  const [isEnabled, setIsEnabled] = React.useState(false);
+  const [selectedVariant, setSelectedVariant] = useState<string | null>('off');
+  const [layerVariants, setLayerVariants] =
+    useState<Record<string, Record<string, AnimateOptions>>>(undefined);
 
-  React.useEffect(() => {
+  const [isEnabled, setIsEnabled] = useState(false);
+
+  const allVariants =
+    layerVariants && Object.values(layerVariants).length
+      ? Object.keys(Object.values(layerVariants)[0])
+      : [];
+
+  useEffect(() => {
     window.onmessage = (event: { data: { pluginMessage: PluginMessage } }) => {
-      const { type, message } = event.data.pluginMessage;
+      const { type, message } = { ...event.data.pluginMessage };
       if (type === 'onSelectionChange') {
-        setCurrentLayerNode(message.layerNode);
+        setCurrentLayerNode({ ...message.layerNode });
       }
     };
   }, []);
 
-  const goBack = () => {
-    if (prevLayerNodes.length > 0) {
-      setPrevLayerNodes((prevState) => {
-        const layer = prevState.pop();
-
-        setCurrentLayerNode(layer);
-        return prevState;
-      });
+  useEffect(() => {
+    if (treeList.length) {
+      setLayerVariants(
+        Object.fromEntries(treeList.map((x) => [x.id, { off: {}, on: {} }])),
+      );
     }
-  };
+  }, [treeList]);
 
-  const selectLayerNode = (layer: LayerNode) => {
-    setPrevLayerNodes((prevState) => [...prevState, currentLayerNode]);
-    setCurrentLayerNode(layer);
-  };
+  // console.log(layerVariants);
 
+  if (!currentLayerNode || !treeList.length || !layerVariants) {
+    return null;
+  }
+  console.log(layerVariants['120:8']);
   return (
-    <div style={{ paddingTop: 4 }}>
-      <div className="flex justify-center mb-4">
+    <div>
+      <div className="flex justify-center mt-4 mb-5">
         <div>
           {currentLayerNode ? (
             <>
@@ -194,20 +353,26 @@ function App() {
                     top: 0,
                     left: 0,
                   }}
-                  animate={
-                    isEnabled ? animations[currentLayerNode.id] ?? {} : {}
-                  }
+                  // animate={
+                  //   isEnabled ? animateOptions[currentLayerNode.id] ?? {} : {}
+                  // }
+                  animate={layerVariants[currentLayerNode.id][selectedVariant]}
+                  // animate={{}}
                 >
                   {/* Layer children */}
                   {currentLayerNode.children?.map((child) => {
                     return (
                       <m.div
                         key={child.id}
-                        style={child.styles}
+                        // style={child.styles}
                         // todo: without auto-layout we have to use absolute
                         // figure out how me make this work
-                        // style={{ position: 'absolute', ...child.styles }}
-                        animate={isEnabled ? animations[child.id] ?? {} : {}}
+                        style={{ position: 'absolute', ...child.styles }}
+                        // animate={
+                        //   isEnabled ? animateOptions[child.id] ?? {} : {}
+                        // }
+                        animate={layerVariants[child.id][selectedVariant]}
+                        // animate={{}}
                       />
                     );
                   })}
@@ -219,7 +384,6 @@ function App() {
           )}
         </div>
       </div>
-
       {currentLayerNode ? (
         <div className="m-2 rounded-md p-4 border border-gray-200 bg-gray-50">
           <div className="flex justify-between mb-2">
@@ -230,65 +394,39 @@ function App() {
 
               <div className="h-4 border-r border-gray-400" />
 
-              <button onClick={() => goBack()}>
-                {prevLayerNodes[prevLayerNodes.length - 1]?.name ??
-                  currentLayerNode.name}
-              </button>
-              {prevLayerNodes.length > 0 ? (
-                <>
-                  <span>{'>'}</span>
-                  <button>{currentLayerNode.name}</button>
-                </>
-              ) : null}
+              <select
+                className="focus:outline-none bg-transparent"
+                value={selectedVariant}
+                onChange={(e) => setSelectedVariant(e.target.value)}
+              >
+                {allVariants.map((variant) => (
+                  <option key={variant} value={variant}>
+                    {variant}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>Export</div>
           </div>
 
-          <div className="flex gap-4">
-            <div className="rounded-md">
-              {currentLayerNode.children?.map((layer) => (
-                <button
-                  key={layer.id}
-                  className="p-2"
-                  onClick={() => selectLayerNode(layer)}
-                >
-                  {layer.name}
-                </button>
-              ))}
-            </div>
-
-            <div className="rounded-md p-2 flex-1 bg-white shadow-sm space-y-2">
-              <NewSetting
-                {...{ setAnimations }}
-                layerId={currentLayerNode.id}
+          <div>
+            {treeList.map((layerNode) => (
+              <LayerNodeSettings
+                key={layerNode.id}
+                layerNode={layerNode}
+                animateOptions={layerVariants[layerNode.id][selectedVariant]}
+                onChangeAnimateOptions={(animateOptions) => {
+                  // console.log(selectedVariant);
+                  setLayerVariants((lv) => ({
+                    ...lv,
+                    [layerNode.id]: {
+                      ...lv[layerNode.id],
+                      [selectedVariant]: animateOptions,
+                    },
+                  }));
+                }}
               />
-              {Object.entries(animations[currentLayerNode.id] ?? {}).map(
-                ([key, name]) => (
-                  <div
-                    key={currentLayerNode.id + key}
-                    className="flex justify-between"
-                  >
-                    <div>{key}</div>
-                    <input type="text" value={name} />
-                    <button>
-                      <MinusIcon />
-                    </button>
-                  </div>
-                ),
-              )}
-              <hr />
-
-              <div className="flex">
-                <div>Easing:</div>
-                <select>
-                  <option>Ease in out</option>
-                  <option>Ease in</option>
-                  <option>Linear</option>
-                </select>
-              </div>
-              <div>Duration:</div>
-              <input placeholder="300ms" />
-            </div>
+            ))}
           </div>
         </div>
       ) : null}
