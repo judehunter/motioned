@@ -21,7 +21,10 @@ const filterRGBA = (
   const filtered = Object.fromEntries(
     Object.entries(color).map(([key, val]) => [key, iterator(val)]),
   );
-  return [filtered.r, filtered.g, filtered.b, filtered.a].filter(Boolean);
+
+  return [filtered.r, filtered.g, filtered.b, filtered.a].filter(
+    (f) => f !== undefined,
+  );
 };
 
 /** convert figma color values to css format */
