@@ -149,13 +149,14 @@ export const convertNodePropsToStyles = (node: SceneNode) => {
 
         // padding
         const padding = [
-          ...new Set(
+          ...new Set([
             node.paddingTop,
             node.paddingRight,
             node.paddingBottom,
             node.paddingLeft,
-          ),
+          ]),
         ];
+
         if (padding.some((p) => p > 0)) {
           styles.push(['padding', padding.map((p) => `${p}px`).join(' ')]);
         }
@@ -186,22 +187,15 @@ export type LayerNode = {
  * generate node structure with children and variants
  */
 export const convertFigmaNodes = (
-  componentSetNode: SceneNode & { children?: SceneNode[]; id: string },
+  node: SceneNode & { children?: SceneNode[]; id: string },
 ) => {
-  // transverse through the figma document tree and replace each node with a react component
-  const buildFigmaNodeTree = (
-    node: SceneNode & { children?: SceneNode[]; id: string },
-  ): LayerNode => {
-    const styles = convertNodePropsToStyles(node);
+  const styles = convertNodePropsToStyles(node);
 
-    return {
-      children: node.children ? node.children.map(buildFigmaNodeTree) : null,
-      styles,
-      name: node.name,
-      id: node.id,
-      figmaNodeType: node.type,
-    };
+  return {
+    children: node.children ? node.children.map(convertFigmaNodes) : null,
+    styles,
+    name: node.name,
+    id: node.id,
+    figmaNodeType: node.type,
   };
-
-  return buildFigmaNodeTree(componentSetNode);
 };
