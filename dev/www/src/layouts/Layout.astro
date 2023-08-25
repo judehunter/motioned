@@ -35,4 +35,23 @@ const { title } = Astro.props;
 		font-family: Menlo, Monaco, Lucida Console, Liberation Mono, DejaVu Sans Mono,
 			Bitstream Vera Sans Mono, Courier New, monospace;
 	}
+
+	.animate-gradient {
+		background-size: 300%;
+		-webkit-animation: animate-pos 2s ease infinite alternate;
+		-moz-animation: animate-pos 2s ease infinite alternate;
+		animation: animate-pos 2s ease infinite alternate;
+	}
+
+	@keyframes animate-pos {
+		0% {
+			background-position: 0% 50%;
+		}
+		50% {
+			background-position: 100% 50%;
+		}
+		100% {
+			background-position: 0% 50%;
+		}
+	}
 </style>
