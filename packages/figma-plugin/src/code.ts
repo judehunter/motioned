@@ -1,6 +1,6 @@
 import { convertFigmaNodes } from './plugin/utils';
 
-figma.showUI(__html__, { height: 500, width: 500 });
+figma.showUI(__html__, { height: 690, width: 500 });
 
 figma.ui.onmessage = (msg) => {};
 

@@ -191,6 +191,13 @@ const AnimProperty = ({
         <option value="ease-in">ease-in</option>
         <option value="ease-out">ease-out</option>
         <option value="ease-in-out">ease-in-out</option>
+        <option value="ease-in-out">ease-in-out</option>
+        <option value="circ-in">circ-in</option>
+        <option value="circ-out">circ-out</option>
+        <option value="circ-in-out">circ-in-out</option>
+        <option value="back-in">back-in</option>
+        <option value="back-out">back-out</option>
+        <option value="back-in-out">back-in-out</option>
         <option value="linear">linear</option>
       </select>
     </div>
