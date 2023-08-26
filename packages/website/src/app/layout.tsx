@@ -28,7 +28,7 @@ export default function RootLayout({
           content="Batteries included animation library for React + devtools + Figma plugin. Based on WAAPI."
         />
         <meta name="viewport" content="width=device-width" />
-        <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="icon" type="image/x-icon" href="/motioned/favicon.svg" />
         <title>Motioned</title>
       </head>
       <body
