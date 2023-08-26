@@ -8,7 +8,7 @@ export const WaitList = () => {
   const handleSubmit = async () => {
     setState('loading');
 
-    const result = await fetch('/api/waitlist', {
+    const result = await fetch('/motioned/api/waitlist', {
       body: JSON.stringify({ email }),
       method: 'POST',
       headers: {
