@@ -4,7 +4,7 @@ declare module "*.svg";
 type FigmaEffect =
   | {
       type: 'DROP_SHADOW' | 'INNER_SHADOW' | 'LAYER_BLUR' | 'BACKGROUND_BLUR';
-    } & Record<string, any>;
+    };
 
 // todo before review: check all easing settings
 type FigmaEasing = "EASE_IN" | "EASE_OUT" | "EASE_IN_AND_OUT" | "EASE_IN_BACK" | "EASE_IN_AND_OUT_BACK"

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { P, match } from 'ts-pattern';
 
 const justifyContentCssValues = {
@@ -30,7 +31,7 @@ const filterRGBA = (
 /** convert figma color values to css format */
 const buildColorString = (paint: Paint | { type: 'RGBA'; color: RGBA }) => {
   if (paint.type === 'SOLID') {
-    if (paint.opacity < 1) {
+    if (paint.opacity && paint.opacity < 1) {
       const filtered = filterRGBA(paint.color, (val) => Math.floor(val * 255));
       return `rgba(${filtered.join(',')}, ${paint.opacity})`;
     }
@@ -52,19 +53,24 @@ const buildColorString = (paint: Paint | { type: 'RGBA'; color: RGBA }) => {
 const buildBoxShadow = (effect: FigmaEffect) => {
   const shadowType = effect.type === 'INNER_SHADOW' ? 'inset ' : '';
 
-  return `${shadowType}${effect.offset.x}px ${effect.offset.y}px ${
-    effect.radius
-  }px ${buildColorString({
+  return `${shadowType}${(effect as any).offset.x}px ${
+    (effect as any).offset.y
+  }px ${(effect as any).radius}px ${buildColorString({
     // todo: for when value is set to hex
     type: 'RGBA',
-    color: effect.color,
+    color: (effect as any).color,
   })}`;
 };
+
+const guard = <T>(val: any, cond: boolean): val is T => cond;
+
+type Writeable<T> = { -readonly [P in keyof T]: T[P] };
+const dropReadonly = <T>(val: T) => val as Writeable<T>;
 
 // convertion rules taken from https://github.com/kazuyaseki/figma-to-react/blob/main/src/getCssDataForTag.ts#L113
 /** replaces figma node props with react style props */
 export const convertNodePropsToStyles = (node: SceneNode) => {
-  const styles = [];
+  const styles: [string, any][] = [];
 
   // apply left and top values
   // todo: update for auto layout
@@ -75,64 +81,76 @@ export const convertNodePropsToStyles = (node: SceneNode) => {
     styles.push(['width', `${Math.floor(node.width)}px`]);
 
     // opacity
-    const opacity = node.opacity as number | undefined;
-    if (opacity < 1) {
+    const opacity = 'opacity' in node ? node.opacity : undefined;
+    if (opacity) {
       styles.push(['opacity', opacity]);
     }
 
     // figma effects -> shadow, blur, backdrop
-    const effects = node.effects as Array<FigmaEffect>;
+    const effects =
+      'effects' in node
+        ? (node.effects as any as Array<FigmaEffect>)
+        : undefined;
 
-    if (effects.length > 0) {
+    if (effects?.length) {
       effects.forEach((eff) => {
         styles.push(
           match(eff)
-            .with(
-              { type: P.union('DROP_SHADOW', 'INNER_SHADOW') },
-              (shadow) => ['boxShadow', buildBoxShadow(shadow)],
+            .with({ type: P.union('DROP_SHADOW', 'INNER_SHADOW') }, (shadow) =>
+              dropReadonly(['boxShadow', buildBoxShadow(shadow)] as const),
             )
-            .with({ type: 'LAYER_BLUR' }, (blur) => [
-              'filter',
-              `blur(${blur.radius})`,
-            ])
-            .with({ type: 'BACKGROUND_BLUR' }, (backdrop) => {
-              ['backdropFilter', `blur(${backdrop.radius}px)`];
-            })
+            .with({ type: 'LAYER_BLUR' }, (blur: any) =>
+              dropReadonly(['filter', `blur(${blur.radius})`] as const),
+            )
+            .with({ type: 'BACKGROUND_BLUR' }, (backdrop: any) =>
+              dropReadonly([
+                'backdropFilter',
+                `blur(${backdrop.radius}px)`,
+              ] as const),
+            )
             .run(),
         );
       });
     }
 
     // rotation -> transform: rotate(90deg);
-    const rotation = node.rotation as number | undefined;
+    const rotation = 'rotation' in node ? node.rotation : undefined;
     if (typeof rotation === 'number' && rotation !== 0) {
       styles.push(['transform', `rotate(${Math.floor(rotation)}deg)`]);
     }
 
     // cornerRadius -> borderRadius
     // todo before review: cornerRadius can also be an array: https://github.com/kazuyaseki/figma-to-react/blob/main/src/getCssDataForTag.ts#L206C10-L206C31
-    const cornerRadius = node.cornerRadius as number;
+    const cornerRadius =
+      'cornerRadius' in node ? (node.cornerRadius as number) : undefined;
     if (cornerRadius) {
       styles.push(['borderRadius', `${cornerRadius}px`]);
     }
 
     // figma Fills -> background color
-    const fills = node.fills as Paint[];
-    if (fills.length > 0 && fills[0].type !== 'IMAGE') {
+    const fills = 'fills' in node ? (node.fills as Paint[]) : undefined;
+    if (fills && fills.length > 0 && fills[0].type !== 'IMAGE') {
       styles.push(['backgroundColor', buildColorString(fills[0])]);
     }
 
     // figma Stroke -> border
-    const strokes = node.strokes as Paint[];
-    if (strokes.length > 0) {
+    const strokes = 'strokes' in node ? (node.strokes as Paint[]) : undefined;
+    if (strokes && strokes.length > 0 && 'strokeWeight' in node) {
       styles.push([
         'border',
-        `${node.strokeWeight}px solid ${buildColorString(strokes[0])}`,
+        `${node.strokeWeight as number}px solid ${buildColorString(
+          strokes[0],
+        )}`,
       ]);
     }
 
     // ---- apply styles for this node type
-    if (['FRAME', 'INSTANCE', 'COMPONENT'].includes(node.type)) {
+    if (
+      guard<FrameNode>(
+        node,
+        ['FRAME', 'INSTANCE', 'COMPONENT'].includes(node.type),
+      )
+    ) {
       // handle layout modes
       const layoutMode = node.layoutMode as 'NONE' | 'AUTO' | 'HORIZONTAL';
       if (layoutMode !== 'NONE') {
@@ -178,27 +196,33 @@ export const convertNodePropsToStyles = (node: SceneNode) => {
   return Object.fromEntries(styles);
 };
 
-export type LayerNode = {
-  children: LayerNode[];
+export type LayerNode<T extends SceneNode = SceneNode> = {
+  children: LayerNode[] | null;
   styles: Record<string, any>;
   name: string;
   id: string;
-  figmaNodeType: string;
+  type: T['type'];
 };
 
 /**
  * generate node structure with children and variants
  */
-export const convertFigmaNodes = (
-  node: SceneNode & { children?: SceneNode[]; id: string },
-) => {
+export const convertFigmaNodes = (node: SceneNode) => {
   const styles = convertNodePropsToStyles(node);
 
   return {
-    children: node.children ? node.children.map(convertFigmaNodes) : null,
+    children: 'children' in node ? node.children.map(convertFigmaNodes) : null,
     styles,
     name: node.name,
     id: node.id,
-    figmaNodeType: node.type,
-  };
+    type: node.type,
+  } satisfies LayerNode;
+};
+
+export const useWatch = (value: any, onChange: () => void) => {
+  const [prevValue, setPrevValue] = useState(value);
+  if (prevValue !== value) {
+    setPrevValue(value);
+    onChange();
+  }
 };

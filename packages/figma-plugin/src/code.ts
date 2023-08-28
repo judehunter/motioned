@@ -7,16 +7,21 @@ figma.ui.onmessage = (msg) => {};
 figma.on('selectionchange', () => {
   const selection = figma.currentPage.selection[0];
 
-  if (!selection) {
-    return;
+  if (selection?.type === 'FRAME') {
+    const layerNode = convertFigmaNodes(selection);
+
+    figma.ui.postMessage({
+      type: 'onSelectionChange',
+      message: {
+        layerNode,
+      },
+    });
+  } else {
+    figma.ui.postMessage({
+      type: 'onSelectionChange',
+      message: {
+        layerNode: null,
+      },
+    });
   }
-
-  const layerNode = convertFigmaNodes(selection);
-
-  figma.ui.postMessage({
-    type: 'onSelectionChange',
-    message: {
-      layerNode,
-    },
-  });
 });
