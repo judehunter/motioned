@@ -11,9 +11,14 @@
     "watch": "webpack --watch"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.0.8",
+    "@dnd-kit/modifiers": "^6.0.1",
+    "@dnd-kit/utilities": "^3.2.1",
+    "@floating-ui/react": "^0.25.2",
     "create-file-webpack": "^1.0.2",
     "html-loader": "^4.2.0",
     "html-webpack-inline-source-plugin": "^0.0.10",
+    "motioned": "workspace:*",
     "postcss": "^8.4.19",
     "postcss-loader": "^7.0.2",
     "postcss-preset-env": "^7.8.3",
@@ -22,7 +27,6 @@
     "react": "^18.2.0",
     "react-dev-utils": "^12.0.1",
     "react-dom": "^18.2.0",
-    "motioned": "workspace:*",
     "ts-pattern": "5.0.5"
   },
   "devDependencies": {

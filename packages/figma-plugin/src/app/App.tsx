@@ -3,6 +3,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimateOptions, m } from 'motioned';
 
 import { LayerNode, useWatch } from '../plugin/utils';
+import {
+  DndContext,
+  MouseSensor,
+  useDraggable,
+  useSensor,
+} from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
+import { restrictToHorizontalAxis } from '@dnd-kit/modifiers';
+import { FloatingPortal, offset, useFloating } from '@floating-ui/react';
 
 type PluginMessage = {
   type: 'onSelectionChange';
@@ -149,11 +158,19 @@ const Keyframe = () => {
   );
 };
 
+const DelayPseudoKeyframe = () => {
+  return (
+    <div className="transform rotate-45 -translate-x-1/2 bg-teal-600 w-[10px] h-[10px] border-2 border-gray-50"></div>
+  );
+};
+
+const ZOOM = 0.5;
 type Property = {
   name: string;
   value: string;
   easing: string;
   duration: number;
+  delay: number;
 };
 const AnimProperty = ({
   property,
@@ -162,25 +179,31 @@ const AnimProperty = ({
   property: Property;
   onChange: (property: Property) => void;
 }) => {
-  const ZOOM = 0.5;
+  const mouseSensor = useSensor(MouseSensor, {
+    // Require the mouse to move by 10 pixels before activating
+    activationConstraint: {
+      delay: 100,
+      tolerance: 10,
+    },
+  });
   return (
     <>
-      <div className="sticky left-0 bg-gray-50 border-r-2 border-r-slate-1 00 py-1">
+      <div className="sticky left-0 bg-gray-50 border-r-2 border-r-slate-100 py-1 z-[1]">
         {property.name}
       </div>
 
-      <div className="bg-gray-50 pr-[150px] py-1 relative z-[-1]">
-        <div
-          className="absolute top-1/2 transform -translate-y-1/2 left-[2px] h-[3px] bg-teal-500"
-          style={{ width: property.duration * ZOOM }}
-        />
-        <div
-          className="absolute top-1/2 transform -translate-y-1/2"
-          style={{ left: property.duration * ZOOM }}
-        >
-          <Keyframe />
-        </div>
-      </div>
+      <DndContext
+        modifiers={[restrictToHorizontalAxis]}
+        onDragEnd={(e) => {
+          onChange({
+            ...property,
+            duration: property.duration + e.delta.x / ZOOM,
+          });
+        }}
+        sensors={[mouseSensor]}
+      >
+        <AnimPropertyKeyframes property={property} onChange={onChange} />
+      </DndContext>
     </>
   );
   return (
@@ -228,6 +251,102 @@ const AnimProperty = ({
         <option value="back-in-out">back-in-out</option>
         <option value="linear">linear</option>
       </select>
+    </div>
+  );
+};
+
+// const AnimPropertyKeyframeDraggable = () => {
+
+// }
+
+const AnimPropertyKeyframes = ({
+  property,
+  onChange,
+}: {
+  property: Property;
+  onChange: (property: Property) => void;
+}) => {
+  const paddingLeft = 15;
+
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+    id: 'keyframe',
+  });
+
+  const { refs, floatingStyles } = useFloating({
+    placement: 'right',
+  });
+  const [openTooltip, setOpenTooltip] = useState(false);
+
+  return (
+    <div className="bg-gray-50 pr-[150px] py-1 relative z-[-1]">
+      <div
+        className="absolute top-1/2 transform -translate-y-1/2 h-[3px] bg-teal-500"
+        style={{
+          width:
+            property.duration * ZOOM -
+            property.delay * ZOOM +
+            (transform?.x ?? 0),
+          left: property.delay * ZOOM + paddingLeft,
+        }}
+      />
+      <div
+        className="absolute top-1/2 transform -translate-y-1/2"
+        style={{ left: property.duration * ZOOM + paddingLeft }}
+      >
+        <div
+          ref={setNodeRef}
+          {...listeners}
+          {...attributes}
+          style={{
+            transform: CSS.Translate.toString(transform),
+          }}
+        >
+          <div
+            ref={refs.setReference}
+            onClick={() => {
+              setOpenTooltip((prevState) => !prevState);
+            }}
+          >
+            <Keyframe />
+          </div>
+        </div>
+        <div
+          ref={refs.setFloating}
+          className={`${openTooltip ? 'block' : 'hidden'}`}
+          style={floatingStyles}
+        >
+          <div className="transform -translate-y-1/2">
+            <input className="outline-none bg-transparent rounded border-2 border-teal-500" />
+          </div>
+        </div>
+      </div>
+      <div
+        className="absolute top-1/2 transform -translate-y-1/2"
+        style={{ left: property.delay * ZOOM + paddingLeft }}
+      >
+        <DelayPseudoKeyframe />
+      </div>
+    </div>
+  );
+};
+
+const TimelineTick = ({ big }: { big: boolean }) => {
+  return (
+    <div
+      className={`border-r border-r-slate-300 ${big ? 'h-[10px]' : 'h-[5px]'}`}
+    />
+  );
+};
+
+const Timeline = ({}) => {
+  return (
+    <div>
+      <div className="border-b border-b-slate-300" />
+      <div className="flex items-start" style={{ gap: 100 * ZOOM - 1 }}>
+        {[...new Array(11)].map((_, idx) => (
+          <TimelineTick key={idx} big={idx % 10 === 0} />
+        ))}
+      </div>
     </div>
   );
 };
@@ -304,12 +423,14 @@ const LayerNodeSettings = ({
 
   return (
     <div className="grid grid-cols-[150px_auto] mr-[-150px] relative z-[1]">
-      <div className="font-medium sticky left-0 bg-gray-50 border-r-2 border-r-slate-100 py-1 pt-4">
+      <div className="font-medium sticky left-0 bg-gray-50 border-r-2 border-r-slate-100 py-1 pt-6 z-[1]">
         {layerNode.name}
       </div>
+      <div className="bg-gray-50 pr-[150px] py-1 pt-7 pl-[15px]">
+        <Timeline />
+      </div>
 
-      <div className="bg-gray-50 pr-[150px] py-1"></div>
-      {properties.map(({ value, duration, easing, name }, idx) => (
+      {properties.map(({ value, duration, easing, name, delay }, idx) => (
         <AnimProperty
           key={idx}
           property={{
@@ -317,12 +438,13 @@ const LayerNodeSettings = ({
             value: '' + value,
             easing,
             duration,
+            delay,
           }}
           onChange={(x) => updateProperty(idx, x)}
         />
       ))}
 
-      <div className="font-medium sticky left-0 bg-gray-50 border-r-2 border-r-slate-100 py-1">
+      <div className="font-medium sticky left-0 bg-gray-50 border-r-2 border-r-slate-100 py-1 z-[1]">
         <form
           className="m-0"
           onSubmit={(e) => {
@@ -334,6 +456,7 @@ const LayerNodeSettings = ({
                 value: '',
                 duration: 300,
                 easing: 'ease',
+                delay: 0,
               },
             ]);
             setNewPropertyName('');
@@ -574,7 +697,7 @@ const FrameSettings = ({
           <div>Export</div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto pb-8">
           {treeList.slice(1 /* do not show the frame */).map((layerNode) => (
             <LayerNodeSettings
               key={layerNode.id}
