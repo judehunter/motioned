@@ -868,7 +868,7 @@ const FrameSettings = ({
           <div>Export</div>
         </div>
         {/* overflow-x-auto */}
-        <div className="pb-8">
+        <div className="overflow-x-hidden pb-8">
           {treeList.slice(1 /* do not show the frame */).map((layerNode) => (
             <LayerNodeSettings
               key={layerNode.id}
