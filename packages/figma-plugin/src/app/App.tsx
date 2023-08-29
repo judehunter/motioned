@@ -10,8 +10,22 @@ import {
   useSensor,
 } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { restrictToHorizontalAxis } from '@dnd-kit/modifiers';
-import { FloatingPortal, offset, useFloating } from '@floating-ui/react';
+import {
+  createSnapModifier,
+  restrictToHorizontalAxis,
+} from '@dnd-kit/modifiers';
+import {
+  FloatingFocusManager,
+  FloatingPortal,
+  autoUpdate,
+  offset,
+  useClick,
+  useDismiss,
+  useFloating,
+  useInteractions,
+  useRole,
+} from '@floating-ui/react';
+import { BezierCurveEditor } from 'react-bezier-curve-editor';
 
 type PluginMessage = {
   type: 'onSelectionChange';
@@ -152,9 +166,186 @@ export const ArrowPath = () => {
 //   );
 // };
 
-const Keyframe = () => {
+const Keyframe = ({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) => {
+  const [open, setOpen] = useState(false);
+
+  const {
+    refs,
+    floatingStyles,
+    context,
+    placement: resultantPlacement,
+  } = useFloating({
+    placement: 'top',
+    open,
+    onOpenChange: setOpen,
+    middleware: [offset(4)],
+    whileElementsMounted: autoUpdate,
+  });
+
+  const { getReferenceProps, getFloatingProps } = useInteractions([
+    useClick(context),
+    useDismiss(context),
+    useRole(context),
+  ]);
+
   return (
-    <div className="transform rotate-45 -translate-x-1/2 bg-teal-600 w-[15px] h-[15px] border-2 border-gray-50"></div>
+    <>
+      <div
+        className="transform rotate-45 -translate-x-1/2 bg-teal-600 w-[15px] h-[15px] border-2 border-gray-50"
+        ref={refs.setReference}
+        {...getReferenceProps()}
+      />
+      <FloatingPortal>
+        {open ? (
+          <FloatingFocusManager context={context} modal={false}>
+            <div
+              ref={refs.setFloating}
+              {...getFloatingProps()}
+              className="z-[1] bg-white rounded-lg shadow p-2"
+              style={floatingStyles}
+            >
+              <input
+                type="text"
+                className="outline-none rounded-lg"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+              />
+            </div>
+          </FloatingFocusManager>
+        ) : null}
+      </FloatingPortal>
+    </>
+  );
+};
+
+const easingBezierMap = {
+  linear: [0.5, 0.5, 0.5, 0.5],
+  ease: [0.25, 0.1, 0.25, 1],
+  'ease-in': [0.42, 0, 1, 1],
+  'ease-out': [0, 0, 0.58, 1],
+  'circ-in': [0.55, 0, 1, 0.45],
+  'circ-out': [0, 0.55, 0.45, 1],
+  'circ-in-out': [0.85, 0, 0.15, 1],
+  'back-in': [0.36, 0, 0.66, -0.56],
+  'back-out': [0.34, 1.56, 0.64, 1],
+  'back-in-out': [0.68, -0.6, 0.32, 1.6],
+};
+
+const TransitionLine = ({
+  property,
+  dragDeltaKeyframe,
+  dragDeltaDelay,
+  onChange,
+}: {
+  property: Property;
+  dragDeltaKeyframe: number;
+  dragDeltaDelay: number;
+  onChange: (property: Property) => void;
+}) => {
+  const [open, setOpen] = useState(false);
+
+  const {
+    refs,
+    floatingStyles,
+    context,
+    placement: resultantPlacement,
+  } = useFloating({
+    placement: 'top',
+    open,
+    onOpenChange: setOpen,
+    middleware: [offset(4)],
+    whileElementsMounted: autoUpdate,
+  });
+
+  const { getReferenceProps, getFloatingProps } = useInteractions([
+    useClick(context),
+    useDismiss(context),
+    useRole(context),
+  ]);
+
+  const [bezierValues, setBezierValues] = useState(
+    Array.isArray(property.easing)
+      ? property.easing
+      : easingBezierMap[property.easing],
+  );
+
+  return (
+    <>
+      <div
+        className="absolute top-1/2 transform -translate-y-1/2 flex items-center h-[10px] cursor-pointer"
+        style={{
+          width:
+            property.duration * ZOOM -
+            property.delay * ZOOM +
+            dragDeltaKeyframe -
+            dragDeltaDelay,
+          left: property.delay * ZOOM + paddingLeft + dragDeltaDelay,
+        }}
+        ref={refs.setReference}
+        {...getReferenceProps()}
+      >
+        <div className="h-[3px] w-full bg-teal-500" />
+      </div>
+      <FloatingPortal>
+        {open ? (
+          <FloatingFocusManager context={context} modal={false}>
+            <div
+              ref={refs.setFloating}
+              {...getFloatingProps()}
+              className="z-[1] bg-white rounded-lg shadow p-2"
+              style={floatingStyles}
+            >
+              <select
+                value={
+                  Array.isArray(property.easing) ? 'custom' : property.easing
+                }
+                onChange={({ target: { value } }) => {
+                  if (value !== 'custom') {
+                    onChange({ ...property, easing: value });
+                    setBezierValues(easingBezierMap[value]);
+                  } else {
+                    onChange({ ...property, easing: bezierValues });
+                  }
+                }}
+                className="w-full bg-transparent outline-none px-0"
+              >
+                <option value="custom">custom</option>
+                <option value="ease">ease</option>
+                <option value="ease-in">ease-in</option>
+                <option value="ease-out">ease-out</option>
+                <option value="ease-in-out">ease-in-out</option>
+                <option value="ease-in-out">ease-in-out</option>
+                <option value="circ-in">circ-in</option>
+                <option value="circ-out">circ-out</option>
+                <option value="circ-in-out">circ-in-out</option>
+                <option value="back-in">back-in</option>
+                <option value="back-out">back-out</option>
+                <option value="back-in-out">back-in-out</option>
+                <option value="linear">linear</option>
+              </select>
+              <div className="overflow-hidden">
+                <BezierCurveEditor
+                  size={150}
+                  outerAreaColor="transparent"
+                  outerAreaSize={0}
+                  value={bezierValues}
+                  onChange={(value) => {
+                    setBezierValues(value);
+                    onChange({ ...property, easing: value });
+                  }}
+                />
+              </div>
+            </div>
+          </FloatingFocusManager>
+        ) : null}
+      </FloatingPortal>
+    </>
   );
 };
 
@@ -164,11 +355,31 @@ const DelayPseudoKeyframe = () => {
   );
 };
 
+const ArrowDownRight = () => {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+    >
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2"
+        d="m13 11l5 5m0 0l-5 5m5-5h-7.803c-1.118 0-1.678 0-2.105-.218a2 2 0 0 1-.874-.874C7 14.48 7 13.92 7 12.8V3"
+      />
+    </svg>
+  );
+};
+
 const ZOOM = 0.5;
 type Property = {
   name: string;
   value: string;
-  easing: string;
+  easing: string | [number, number, number, number];
   duration: number;
   delay: number;
 };
@@ -188,17 +399,27 @@ const AnimProperty = ({
   });
   return (
     <>
-      <div className="sticky left-0 bg-gray-50 border-r-2 border-r-slate-100 py-1 z-[1]">
-        {property.name}
+      <div className="sticky left-0 py-1 z-[1] flex items-center gap-x-2 text-slate-800">
+        <div className="mt-[-5px]">
+          <ArrowDownRight />
+        </div>
+        <span>{property.name}</span>
       </div>
 
       <DndContext
-        modifiers={[restrictToHorizontalAxis]}
+        modifiers={[restrictToHorizontalAxis, createSnapModifier(5)]}
         onDragEnd={(e) => {
-          onChange({
-            ...property,
-            duration: property.duration + e.delta.x / ZOOM,
-          });
+          if (e.active.id === 'keyframe') {
+            onChange({
+              ...property,
+              duration: property.duration + e.delta.x / ZOOM,
+            });
+          } else if (e.active.id === 'delay') {
+            onChange({
+              ...property,
+              delay: property.delay + e.delta.x / ZOOM,
+            });
+          }
         }}
         sensors={[mouseSensor]}
       >
@@ -206,59 +427,9 @@ const AnimProperty = ({
       </DndContext>
     </>
   );
-  return (
-    <div className="flex items-center mb-2 gap-3">
-      <input
-        value={property.name}
-        onChange={(e) => onChange({ ...property, name: e.target.value })}
-        className="border-b-2 border-gray-400 bg-transparent outline-none w-[100px]"
-        placeholder="name"
-      />
-      <div>:</div>
-      <input
-        value={property.value}
-        onChange={(e) => onChange({ ...property, value: e.target.value })}
-        className="border-b-2 border-gray-400 bg-transparent outline-none w-[100px]"
-        placeholder="value"
-      />
-      <div className="flex items-center">
-        <input
-          value={property.duration}
-          type="number"
-          onChange={(e) =>
-            onChange({ ...property, duration: e.target.valueAsNumber })
-          }
-          className="border-b-2 border-gray-400 bg-transparent outline-none text-right w-[50px]"
-          placeholder="duration"
-        />
-        <span className="ml-1">ms</span>
-      </div>
-      <select
-        value={property.easing}
-        onChange={(e) => onChange({ ...property, easing: e.target.value })}
-        className="border-b-2 border-gray-400 bg-transparent outline-none w-[140px]"
-      >
-        <option value="ease">ease</option>
-        <option value="ease-in">ease-in</option>
-        <option value="ease-out">ease-out</option>
-        <option value="ease-in-out">ease-in-out</option>
-        <option value="ease-in-out">ease-in-out</option>
-        <option value="circ-in">circ-in</option>
-        <option value="circ-out">circ-out</option>
-        <option value="circ-in-out">circ-in-out</option>
-        <option value="back-in">back-in</option>
-        <option value="back-out">back-out</option>
-        <option value="back-in-out">back-in-out</option>
-        <option value="linear">linear</option>
-      </select>
-    </div>
-  );
 };
 
-// const AnimPropertyKeyframeDraggable = () => {
-
-// }
-
+const paddingLeft = 15;
 const AnimPropertyKeyframes = ({
   property,
   onChange,
@@ -266,85 +437,84 @@ const AnimPropertyKeyframes = ({
   property: Property;
   onChange: (property: Property) => void;
 }) => {
-  const paddingLeft = 15;
-
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+  const keyframeDraggable = useDraggable({
     id: 'keyframe',
   });
-
-  const { refs, floatingStyles } = useFloating({
-    placement: 'right',
+  const delayDraggable = useDraggable({
+    id: 'delay',
   });
-  const [openTooltip, setOpenTooltip] = useState(false);
 
   return (
-    <div className="bg-gray-50 pr-[150px] py-1 relative z-[-1]">
-      <div
-        className="absolute top-1/2 transform -translate-y-1/2 h-[3px] bg-teal-500"
-        style={{
-          width:
-            property.duration * ZOOM -
-            property.delay * ZOOM +
-            (transform?.x ?? 0),
-          left: property.delay * ZOOM + paddingLeft,
-        }}
+    <div className="pr-[150px] py-1 relative z-[-1]">
+      <TransitionLine
+        property={property}
+        dragDeltaKeyframe={keyframeDraggable.transform?.x ?? 0}
+        dragDeltaDelay={delayDraggable.transform?.x ?? 0}
+        onChange={(property) => onChange(property)}
       />
       <div
         className="absolute top-1/2 transform -translate-y-1/2"
         style={{ left: property.duration * ZOOM + paddingLeft }}
       >
         <div
-          ref={setNodeRef}
-          {...listeners}
-          {...attributes}
+          ref={keyframeDraggable.setNodeRef}
+          {...keyframeDraggable.listeners}
+          {...keyframeDraggable.attributes}
           style={{
-            transform: CSS.Translate.toString(transform),
+            transform: CSS.Translate.toString(keyframeDraggable.transform),
           }}
         >
-          <div
-            ref={refs.setReference}
-            onClick={() => {
-              setOpenTooltip((prevState) => !prevState);
-            }}
-          >
-            <Keyframe />
-          </div>
-        </div>
-        <div
-          ref={refs.setFloating}
-          className={`${openTooltip ? 'block' : 'hidden'}`}
-          style={floatingStyles}
-        >
-          <div className="transform -translate-y-1/2">
-            <input className="outline-none bg-transparent rounded border-2 border-teal-500" />
-          </div>
+          <Keyframe
+            value={property.value}
+            onChange={(value) => onChange({ ...property, value })}
+          />
         </div>
       </div>
       <div
         className="absolute top-1/2 transform -translate-y-1/2"
         style={{ left: property.delay * ZOOM + paddingLeft }}
       >
-        <DelayPseudoKeyframe />
+        <div
+          ref={delayDraggable.setNodeRef}
+          {...delayDraggable.listeners}
+          {...delayDraggable.attributes}
+          style={{
+            transform: CSS.Translate.toString(delayDraggable.transform),
+          }}
+        >
+          <DelayPseudoKeyframe />
+        </div>
       </div>
     </div>
   );
 };
 
-const TimelineTick = ({ big }: { big: boolean }) => {
+const TimelineTick = ({ size }: { size: 1 | 2 | 3 }) => {
   return (
     <div
-      className={`border-r border-r-slate-300 ${big ? 'h-[10px]' : 'h-[5px]'}`}
+      className={`border-r border-r-slate-300`}
+      style={{
+        height: {
+          1: '2px',
+          2: '5px',
+          3: '10px',
+        }[size],
+      }}
     />
   );
 };
 
 const Timeline = ({}) => {
+  const count = 10 * 10 + 1;
   return (
     <div>
       <div className="border-b border-b-slate-300" />
-      <div className="flex items-start" style={{ gap: 100 * ZOOM - 1 }}>
-        {[...new Array(11)].map((_, idx) => (
-          <TimelineTick key={idx} big={idx % 10 === 0} />
+      <div className="flex items-start" style={{ gap: 10 * ZOOM - 1 }}>
+        {[...new Array(count)].map((_, idx) => (
+          <TimelineTick
+            key={idx}
+            size={idx % 100 === 0 ? 3 : idx % 10 === 0 ? 2 : 1}
+          />
         ))}
       </div>
     </div>
@@ -355,36 +525,39 @@ const LayerNodeSettings = ({
   layerNode,
   animateOptions,
   onChangeAnimateOptions,
-  labelsTarget,
-  timelineTarget,
-}: {
+}: // labelsTarget,
+// timelineTarget,
+{
   layerNode: LayerNode;
   animateOptions: AnimateOptions;
   onChangeAnimateOptions: (animateOptions: AnimateOptions) => void;
-  labelsTarget: React.MutableRefObject<HTMLDivElement | null>;
-  timelineTarget: React.MutableRefObject<HTMLDivElement | null>;
+  // labelsTarget: React.MutableRefObject<HTMLDivElement | null>;
+  // timelineTarget: React.MutableRefObject<HTMLDivElement | null>;
 }) => {
-  const { transition = {}, ...animateProperties } = animateOptions;
+  const { transition, animateProperties } = useMemo(() => {
+    const { transition = {}, ...animateProperties } = animateOptions;
+    return { transition, animateProperties };
+  }, [animateOptions]);
 
   const [properties, setProperties] = useState<Property[] | undefined>(
     undefined,
   );
 
-  useEffect(() => {
+  useWatch(animateOptions, () => {
     const newProperties = Object.entries(animateProperties).map(
       ([name, value]) => ({ name, value, ...transition[name] }),
     );
     setProperties(newProperties);
-  }, [animateOptions]);
+  });
 
   const save = () => {
     const newProperties = Object.fromEntries(
       properties!.map(({ name, value }) => [name, value]),
     );
     const newTransitions = Object.fromEntries(
-      properties!.map(({ name, easing, duration }) => [
+      properties!.map(({ name, easing, duration, delay }) => [
         name,
-        { easing, duration },
+        { easing, duration, delay },
       ]),
     );
     onChangeAnimateOptions({
@@ -398,22 +571,20 @@ const LayerNodeSettings = ({
 
   const [newPropertyName, setNewPropertyName] = useState('');
 
-  // console.log({ properties });
-
   const updateProperty = (idx: number, property: Property) => {
     const newProperties = [...properties!];
     newProperties[idx] = property;
     setProperties(newProperties);
   };
 
-  // useEffect(() => {
-  //   window.addEventListener('keypress', function (event) {
-  //     if (event.key === 'Enter') {
-  //       event.preventDefault();
-  //       saveRef.current();
-  //     }
-  //   });
-  // }, []);
+  useEffect(() => {
+    window.addEventListener('keypress', function (event) {
+      if (event.key === '=') {
+        event.preventDefault();
+        saveRef.current();
+      }
+    });
+  }, []);
 
   if (!properties) return null;
 
@@ -423,10 +594,10 @@ const LayerNodeSettings = ({
 
   return (
     <div className="grid grid-cols-[150px_auto] mr-[-150px] relative z-[1]">
-      <div className="font-medium sticky left-0 bg-gray-50 border-r-2 border-r-slate-100 py-1 pt-6 z-[1]">
+      <div className="font-medium sticky left-0 bg-slate-100 rounded-lg px-2 py-1 mt-5 mb-1 z-[1]">
         {layerNode.name}
       </div>
-      <div className="bg-gray-50 pr-[150px] py-1 pt-7 pl-[15px]">
+      <div className="pr-[150px] py-1 pt-7 pl-[15px] mb-1">
         <Timeline />
       </div>
 
@@ -444,7 +615,7 @@ const LayerNodeSettings = ({
         />
       ))}
 
-      <div className="font-medium sticky left-0 bg-gray-50 border-r-2 border-r-slate-100 py-1 z-[1]">
+      <div className="font-medium sticky left-0 py-1 z-[1]">
         <form
           className="m-0"
           onSubmit={(e) => {
@@ -472,7 +643,7 @@ const LayerNodeSettings = ({
         </form>
       </div>
 
-      <div className="bg-gray-50 pr-[150px] py-1"></div>
+      <div className="pr-[150px] py-1"></div>
 
       {/* <button
         onClick={() => {
@@ -667,7 +838,7 @@ const FrameSettings = ({
     renameVariant,
   } = useVariants(treeList);
   const [selectedVariant, setSelectedVariant] = useState<string>('initial');
-  // console.log(layerVariants, layerNode);
+
   return (
     <div>
       <div className="flex justify-center mt-4 mb-5">
@@ -679,11 +850,11 @@ const FrameSettings = ({
           />
         </div>
       </div>
-      <div className="m-2 rounded-md p-4 border border-gray-200 bg-gray-50">
+      <div className="m-2 p-4 border-t border-slate-200">
         <div className="flex justify-between mb-2">
           <div className="flex gap-4 items-center">
             <select
-              className="focus:outline-none bg-transparent"
+              className="focus:outline-none bg-transparent px-0"
               value={selectedVariant}
               onChange={(e) => setSelectedVariant(e.target.value)}
             >
@@ -696,8 +867,8 @@ const FrameSettings = ({
           </div>
           <div>Export</div>
         </div>
-
-        <div className="overflow-x-auto pb-8">
+        {/* overflow-x-auto */}
+        <div className="pb-8">
           {treeList.slice(1 /* do not show the frame */).map((layerNode) => (
             <LayerNodeSettings
               key={layerNode.id}
@@ -719,143 +890,5 @@ const FrameSettings = ({
     </div>
   );
 };
-
-// function App() {
-//   const [currentLayerNode, setCurrentLayerNode] = useState<LayerNode>(null);
-
-//   const treeList = useMemo(
-//     () => walkNodeTree(currentLayerNode),
-//     [currentLayerNode],
-//   );
-
-//   const [selectedVariant, setSelectedVariant] = useState<string | null>('off');
-//   const [layerVariants, setLayerVariants] =
-//     useState<Record<string, Record<string, AnimateOptions>>>(undefined);
-
-//   const [isEnabled, setIsEnabled] = useState(false);
-
-//   const allVariants =
-//     layerVariants && Object.values(layerVariants).length
-//       ? Object.keys(Object.values(layerVariants)[0])
-//       : [];
-
-//   useEffect(() => {
-//     window.onmessage = (event: { data: { pluginMessage: PluginMessage } }) => {
-//       const { type, message } = { ...event.data.pluginMessage };
-//       if (type === 'onSelectionChange') {
-//         setCurrentLayerNode({ ...message.layerNode });
-//       }
-//     };
-//   }, []);
-
-//   useEffect(() => {
-//     if (treeList.length) {
-//       setLayerVariants(
-//         Object.fromEntries(treeList.map((x) => [x.id, { off: {}, on: {} }])),
-//       );
-//     }
-//   }, [treeList]);
-
-//   // console.log(layerVariants);
-
-//   if (!currentLayerNode || !treeList.length || !layerVariants) {
-//     return null;
-//   }
-//   console.log(layerVariants['120:8']);
-// return (
-//   <div>
-//     <div className="flex justify-center mt-4 mb-5">
-//       <div>
-//         {currentLayerNode ? (
-//           <>
-//             {
-//               <m.div
-//                 key={currentLayerNode.id}
-//                 style={{
-//                   position: 'relative',
-//                   ...currentLayerNode.styles,
-//                   top: 0,
-//                   left: 0,
-//                 }}
-//                 // animate={
-//                 //   isEnabled ? animateOptions[currentLayerNode.id] ?? {} : {}
-//                 // }
-//                 animate={layerVariants[currentLayerNode.id][selectedVariant]}
-//                 // animate={{}}
-//               >
-//                 {/* Layer children */}
-//                 {currentLayerNode.children?.map((child) => {
-//                   return (
-//                     <m.div
-//                       key={child.id}
-//                       // style={child.styles}
-//                       // todo: without auto-layout we have to use absolute
-//                       // figure out how me make this work
-//                       style={{ position: 'absolute', ...child.styles }}
-//                       // animate={
-//                       //   isEnabled ? animateOptions[child.id] ?? {} : {}
-//                       // }
-//                       animate={layerVariants[child.id][selectedVariant]}
-//                       // animate={{}}
-//                     />
-//                   );
-//                 })}
-//               </m.div>
-//             }
-//           </>
-//         ) : (
-//           <div>Select a layer</div>
-//         )}
-//       </div>
-//     </div>
-// {currentLayerNode ? (
-//   <div className="m-2 rounded-md p-4 border border-gray-200 bg-gray-50">
-//     <div className="flex justify-between mb-2">
-//       <div className="flex gap-4 items-center">
-//         <button onClick={() => setIsEnabled((prevState) => !prevState)}>
-//           {isEnabled ? <ArrowPath /> : <PlayIcon />}
-//         </button>
-
-//         <div className="h-4 border-r border-gray-400" />
-
-//         <select
-//           className="focus:outline-none bg-transparent"
-//           value={selectedVariant}
-//           onChange={(e) => setSelectedVariant(e.target.value)}
-//         >
-//           {allVariants.map((variant) => (
-//             <option key={variant} value={variant}>
-//               {variant}
-//             </option>
-//           ))}
-//         </select>
-//       </div>
-//       <div>Export</div>
-//     </div>
-
-//     <div>
-//       {treeList.map((layerNode) => (
-//         <LayerNodeSettings
-//           key={layerNode.id}
-//           layerNode={layerNode}
-//           animateOptions={layerVariants[layerNode.id][selectedVariant]}
-//           onChangeAnimateOptions={(animateOptions) => {
-//             // console.log(selectedVariant);
-//             setLayerVariants((lv) => ({
-//               ...lv,
-//               [layerNode.id]: {
-//                 ...lv[layerNode.id],
-//                 [selectedVariant]: animateOptions,
-//               },
-//             }));
-//           }}
-//         />
-//       ))}
-//     </div>
-//   </div>
-// ) : null}
-//   </div>
-// );
-// }
 
 export default App;

@@ -159,6 +159,9 @@ importers:
       react:
         specifier: ^18.2.0
         version: 18.2.0
+      react-bezier-curve-editor:
+        specifier: ^1.1.2
+        version: 1.1.2(react-dom@18.2.0)(react@18.2.0)
       react-dev-utils:
         specifier: ^12.0.1
         version: 12.0.1(typescript@4.9.5)(webpack@5.75.0)
@@ -7640,6 +7643,10 @@ packages:
     engines: {node: '>=8'}
     dev: true
 
+  /classnames@2.3.2:
+    resolution: {integrity: sha512-CSbhY4cFEJRe6/GQzIk5qXZ4Jeg5pcsP7b5peFSDpffpe1cqjASH/n9UTjBwOp6XpMSTwQ8Za2K5V02ueA7Tmw==}
+    dev: false
+
   /clean-css@5.3.2:
     resolution: {integrity: sha512-JVJbM+f3d3Q704rF4bqQ5UUyTtuJ0JRKNbTKVEeujCCBoMdkEi+V+e8oktO9qGQNSvHrFTM6JZRXrUvGR1czww==}
     engines: {node: '>= 10.0'}
@@ -12955,6 +12962,17 @@ packages:
       iconv-lite: 0.4.24
       unpipe: 1.0.0
     dev: true
+
+  /react-bezier-curve-editor@1.1.2(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-FzYwbtmf4W2aNGfEzMMMsJJ1b9aGVVhStuYwI1pPEunZgMJZBM/oBIYFthKmp4d0TEKQ7BN6oN+0E9TXtNzCKg==}
+    peerDependencies:
+      react: '>=17'
+      react-dom: '>=17'
+    dependencies:
+      classnames: 2.3.2
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+    dev: false
 
   /react-colorful@5.6.1(react-dom@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-1exovf0uGTGyq5mXQT0zgQ80uvj2PCwvF8zY1RN9/vbJVSjSo3fsB/4L3ObbF7u70NduSiK4xu4Y6q1MHoUGEw==}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { P, match } from 'ts-pattern';
 
 const justifyContentCssValues = {
@@ -220,8 +220,10 @@ export const convertFigmaNodes = (node: SceneNode) => {
 };
 
 export const useWatch = (value: any, onChange: () => void) => {
+  const [firstRender, setFirstRender] = useState(true);
   const [prevValue, setPrevValue] = useState(value);
-  if (prevValue !== value) {
+  if (prevValue !== value || firstRender) {
+    setFirstRender(false);
     setPrevValue(value);
     onChange();
   }
