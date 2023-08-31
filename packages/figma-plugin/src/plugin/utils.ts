@@ -116,7 +116,7 @@ export const convertNodePropsToStyles = (node: SceneNode) => {
     // rotation -> transform: rotate(90deg);
     const rotation = 'rotation' in node ? node.rotation : undefined;
     if (typeof rotation === 'number' && rotation !== 0) {
-      styles.push(['transform', `rotate(${Math.floor(rotation)}deg)`]);
+      styles.push(['__rotate', `${Math.floor(rotation)}deg`]);
     }
 
     // cornerRadius -> borderRadius
