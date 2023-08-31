@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { AnimateOptions, m } from 'motioned';
 
@@ -109,62 +109,6 @@ export const ArrowPath = () => {
     </svg>
   );
 };
-
-// export const NewSetting = ({
-//   setAnimations,
-//   layerId,
-// }: {
-//   setAnimations: React.Dispatch<React.SetStateAction<Animation>>;
-//   layerId: string;
-// }) => {
-//   const [name, setName] = useState('');
-//   const [value, setValue] = useState('');
-
-//   const [show, setShow] = useState(false);
-
-//   const addSetting = () => {
-//     setAnimations((prevState) => ({
-//       ...prevState,
-//       [layerId]: { ...prevState[layerId], [name]: value },
-//     }));
-
-//     setName('');
-//     setValue('');
-
-//     setShow(false);
-//   };
-
-//   return (
-//     <>
-//       <button onClick={() => setShow((prevState) => !prevState)}>+</button>
-//       {show ? (
-//         <div className="flex">
-//           {/* todo: make this a select element */}
-//           <input
-//             type="text"
-//             value={name}
-//             placeholder="Prop name..."
-//             onChange={(ev) => setName(ev.target.value)}
-//           />
-//           <input
-//             type="text"
-//             value={value}
-//             placeholder="Prop value..."
-//             onChange={(ev) => setValue(ev.target.value)}
-//           />
-//           <button
-//             className={`${
-//               !name || !value ? 'text-gray-400' : 'text-green-500'
-//             }`}
-//             onClick={() => addSetting()}
-//           >
-//             <CheckIcon />
-//           </button>
-//         </div>
-//       ) : null}
-//     </>
-//   );
-// };
 
 const Keyframe = ({
   value,
@@ -714,37 +658,45 @@ const useVariants = (treeList: LayerNode[]) => {
 
   const addVariant = (variant: string) => {
     if (definedVariants.includes(variant)) return;
-    setDefinedVariants((prevState) => [...prevState, variant]);
+    setDefinedVariants((prevState) => {
+      const newDefinedVariants = [...prevState, variant];
 
-    setLayerVariants((prevState) => {
-      const newState = { ...prevState };
+      setLayerVariants((layerPrevState) => {
+        const newState = { ...layerPrevState };
 
-      for (const layerId in newState) {
-        for (const variant of definedVariants) {
-          if (!newState[layerId][variant]) {
-            newState[layerId][variant] = {};
+        for (const layerId in newState) {
+          for (const variant of newDefinedVariants) {
+            if (!newState[layerId][variant]) {
+              newState[layerId][variant] = {};
+            }
           }
         }
-      }
-      return newState;
+        return newState;
+      });
+
+      return newDefinedVariants;
     });
   };
 
   const removeVariant = (variant: string) => {
     if (!definedVariants.includes(variant)) return;
-    setDefinedVariants((prevState) => prevState.filter((x) => x !== variant));
+    setDefinedVariants((prevState) => {
+      const newDefinedVariants = prevState.filter((x) => x !== variant);
 
-    setLayerVariants((prevState) => {
-      const newState = { ...prevState };
+      setLayerVariants((prevState) => {
+        const newState = { ...prevState };
 
-      for (const layerId in newState) {
-        for (const variant in newState[layerId]) {
-          if (!definedVariants.includes(variant)) {
-            delete newState[layerId][variant];
+        for (const layerId in newState) {
+          for (const variant in newState[layerId]) {
+            if (!newDefinedVariants.includes(variant)) {
+              delete newState[layerId][variant];
+            }
           }
         }
-      }
-      return newState;
+        return newState;
+      });
+
+      return newDefinedVariants;
     });
   };
 
@@ -807,8 +759,6 @@ const RenderLayerNode = ({
     <m.div
       key={layerNode.id}
       style={{
-        // position: layerNode.figmaNodeType === 'FRAME' ? 'relative' : 'absolute',
-        // position: 'absolute',
         ...layerNode.styles,
         ...(layerNode.type === 'FRAME'
           ? { position: 'relative', top: 0, left: 0 }
@@ -819,6 +769,171 @@ const RenderLayerNode = ({
       {/* Layer children */}
       {renderChildren()}
     </m.div>
+  );
+};
+
+const VariantActions = ({
+  onAdd,
+  onRemove,
+  onRename,
+  selectedVariant,
+  hideRemove,
+}: {
+  onAdd: (name: string) => void;
+  onRemove: () => void;
+  onRename: (name: string) => void;
+  hideRemove?: boolean;
+  selectedVariant: string;
+}) => {
+  const [openState, setOpenState] = useState<
+    'add' | 'remove' | 'rename' | undefined
+  >();
+  const [name, setName] = useState('');
+
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const onVariantChange = (action: 'add' | 'rename') => {
+    if (action === 'add') onAdd(name);
+    else onRename(name);
+
+    setName('');
+    setOpenState(undefined);
+  };
+
+  const btns = [
+    ...(!hideRemove
+      ? [
+          {
+            icon: (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                fill="#0a0606"
+                viewBox="0 0 256 256"
+              >
+                <path d="M216,48H176V40a24,24,0,0,0-24-24H104A24,24,0,0,0,80,40v8H40a8,8,0,0,0,0,16h8V208a16,16,0,0,0,16,16H192a16,16,0,0,0,16-16V64h8a8,8,0,0,0,0-16ZM96,40a8,8,0,0,1,8-8h48a8,8,0,0,1,8,8v8H96Zm96,168H64V64H192ZM112,104v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Zm48,0v64a8,8,0,0,1-16,0V104a8,8,0,0,1,16,0Z"></path>
+              </svg>
+            ),
+            onClick: () =>
+              setOpenState((prevState) =>
+                prevState === 'remove' ? undefined : 'remove',
+              ),
+            state: 'remove',
+          },
+        ]
+      : []),
+    {
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          fill="#0a0606"
+          viewBox="0 0 256 256"
+        >
+          <path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"></path>
+        </svg>
+      ),
+      onClick: () => {
+        setOpenState((prevState) => (prevState === 'add' ? undefined : 'add'));
+      },
+      state: 'add',
+    },
+    {
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="16"
+          height="16"
+          fill="#0a0606"
+          viewBox="0 0 256 256"
+        >
+          <path d="M227.32,73.37,182.63,28.69a16,16,0,0,0-22.63,0L36.69,152A15.86,15.86,0,0,0,32,163.31V208a16,16,0,0,0,16,16H92.69A15.86,15.86,0,0,0,104,219.31l83.67-83.66,3.48,13.9-36.8,36.79a8,8,0,0,0,11.31,11.32l40-40a8,8,0,0,0,2.11-7.6l-6.9-27.61L227.32,96A16,16,0,0,0,227.32,73.37ZM48,179.31,76.69,208H48Zm48,25.38L51.31,160,136,75.31,180.69,120Zm96-96L147.32,64l24-24L216,84.69Z"></path>
+        </svg>
+      ),
+      onClick: () => {
+        setOpenState((prevState) => {
+          const newState = prevState === 'rename' ? undefined : 'rename';
+
+          if (newState) setName(selectedVariant);
+          else setName('');
+
+          return newState;
+        });
+      },
+      state: 'rename',
+    },
+  ];
+
+  return (
+    <div className="flex">
+      {btns.map((b) =>
+        openState !== undefined && b.state !== openState ? null : (
+          <button
+            onClick={() => {
+              b.onClick();
+            }}
+            className="rounded-md shadow-sm p-1 border border-gray-100 mr-2"
+          >
+            {openState === b.state ? (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                fill="currentColor"
+                viewBox="0 0 256 256"
+              >
+                <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path>
+              </svg>
+            ) : (
+              b.icon
+            )}
+          </button>
+        ),
+      )}
+      {openState === 'remove' ? (
+        <button
+          className="text-red-800 outline-none"
+          onClick={() => {
+            onRemove();
+            setOpenState(undefined);
+          }}
+        >
+          Confirm
+        </button>
+      ) : null}
+      {openState === 'add' || openState === 'rename' ? (
+        <>
+          <button
+            className={`rounded-md shadow-sm p-1 border ${
+              !!name && name !== selectedVariant
+                ? 'border-green-500'
+                : 'border-gray-100'
+            } mr-4 transition-all`}
+            disabled={!name || name === selectedVariant}
+            onClick={() => onVariantChange(openState)}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              fill="#0a0606"
+              viewBox="0 0 256 256"
+            >
+              <path d="M229.66,77.66l-128,128a8,8,0,0,1-11.32,0l-56-56a8,8,0,0,1,11.32-11.32L96,188.69,218.34,66.34a8,8,0,0,1,11.32,11.32Z"></path>
+            </svg>
+          </button>
+          <input
+            ref={inputRef}
+            className="outline-none"
+            placeholder="variant name..."
+            value={name}
+            onChange={(ev) => setName(ev.target.value)}
+          />
+        </>
+      ) : null}
+    </div>
   );
 };
 
@@ -864,6 +979,26 @@ const FrameSettings = ({
                 </option>
               ))}
             </select>
+
+            <VariantActions
+              onRemove={() => {
+                removeVariant(selectedVariant);
+                setSelectedVariant(
+                  definedVariants.find((x) => x !== selectedVariant) ??
+                    'initial',
+                );
+              }}
+              onAdd={(name) => {
+                addVariant(name);
+                setSelectedVariant(name);
+              }}
+              onRename={(name) => {
+                renameVariant(selectedVariant, name);
+                setSelectedVariant(name);
+              }}
+              hideRemove={definedVariants.length === 1}
+              {...{ selectedVariant }}
+            />
           </div>
           <div>Export</div>
         </div>
