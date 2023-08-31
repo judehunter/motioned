@@ -761,7 +761,7 @@ const RenderLayerNode = ({
       style={{
         ...layerNode.styles,
         ...(layerNode.styles.__rotate
-          ? { '--rotate': layerNode.styles.__rotate }
+          ? { '--rotate-z': layerNode.styles.__rotate }
           : {}),
         ...(layerNode.type === 'FRAME'
           ? { position: 'relative', top: 0, left: 0 }
