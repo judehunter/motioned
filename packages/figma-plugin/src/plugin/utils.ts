@@ -116,7 +116,28 @@ export const convertNodePropsToStyles = (node: SceneNode) => {
     // rotation -> transform: rotate(90deg);
     const rotation = 'rotation' in node ? node.rotation : undefined;
     if (typeof rotation === 'number' && rotation !== 0) {
-      styles.push(['__rotate', `${Math.floor(rotation)}deg`]);
+      const rotationValue = Math.floor(rotation);
+
+      if (rotationValue) {
+        const deg = (rotationValue * 180) / Math.PI;
+        const relativeTransform = node.relativeTransform;
+
+        const matrix = [
+          Math.cos(relativeTransform[0][0]),
+          Math.sin(relativeTransform[0][1]),
+          0,
+          -Math.sin(relativeTransform[1][0]),
+          Math.cos(relativeTransform[1][1]),
+          0,
+        ];
+
+        styles.push(
+          ['__rotate', `${rotationValue}deg`],
+          ['__matrix', matrix.join(', ')],
+        );
+
+        console.log('s', styles[styles.length - 1]);
+      }
     }
 
     // cornerRadius -> borderRadius

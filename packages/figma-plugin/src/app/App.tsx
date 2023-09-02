@@ -755,22 +755,31 @@ const RenderLayerNode = ({
   if (layerNode.type === 'GROUP') {
     return <>{renderChildren()}</>;
   }
+
   return (
     <m.div
       key={layerNode.id}
+      attr-name={layerNode.name}
       style={{
         ...layerNode.styles,
-        ...(layerNode.styles.__rotate
-          ? { '--rotate-z': layerNode.styles.__rotate }
-          : {}),
         ...(layerNode.type === 'FRAME'
           ? { position: 'relative', top: 0, left: 0 }
           : { position: 'absolute' }),
+        ...(layerNode.styles.__rotate
+          ? {
+              '--rotate-z': layerNode.styles.__rotate,
+              '--matrix': layerNode.styles.__matrix,
+              // left: layerNode.styles.rotateLeft,
+              // top: layerNode.styles.rotateTop,
+            }
+          : {}),
       }}
       animate={layerVariants[layerNode.id][selectedVariant]}
     >
-      {/* Layer children */}
-      {renderChildren()}
+      <div className="relative">
+        {/* Layer children */}
+        {renderChildren()}
+      </div>
     </m.div>
   );
 };

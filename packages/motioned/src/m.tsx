@@ -270,7 +270,7 @@ const makeMElem = <TElement extends keyof React.JSX.IntrinsicElements>(
             ...rest.style,
             ...memodMatchedInitial,
             transform:
-              'translateX(var(--x, 0px)) translateY(var(--y, 0px)) rotateX(var(--rotate-x, 0deg)) rotateY(var(--rotate-y, 0deg)) rotateZ(var(--rotate-z, 0deg)) scaleX(var(--scale-x, 1)) scaleY(var(--scale-y, 1)) skewX(var(--skew-x, 0)) skewY(var(--skew-y, 0))',
+              'translateX(var(--x, 0px)) translateY(var(--y, 0px)) rotateX(var(--rotate-x, 0deg)) rotateY(var(--rotate-y, 0deg)) rotateZ(var(--rotate-z, 0deg)) scaleX(var(--scale-x, 1)) scaleY(var(--scale-y, 1)) skewX(var(--skew-x, 0)) skewY(var(--skew-y, 0)) matrix(var(--matrix, 1, 0, 0, 1, 0, 0))',
           }}
         />
       );
