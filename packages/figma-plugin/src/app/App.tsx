@@ -330,9 +330,11 @@ type Property = {
 const AnimProperty = ({
   property,
   onChange,
+  onClick,
 }: {
   property: Property;
   onChange: (property: Property) => void;
+  onClick: (property: Property) => void;
 }) => {
   const mouseSensor = useSensor(MouseSensor, {
     // Require the mouse to move by 10 pixels before activating
@@ -343,12 +345,15 @@ const AnimProperty = ({
   });
   return (
     <>
-      <div className="sticky left-0 py-1 z-[1] flex items-center gap-x-2 text-slate-800">
+      <button
+        className="sticky left-0 py-1 z-[1] flex items-center gap-x-2 text-slate-800 outline-none"
+        onClick={() => onClick(property)}
+      >
         <div className="mt-[-5px]">
           <ArrowDownRight />
         </div>
         <span>{property.name}</span>
-      </div>
+      </button>
 
       <DndContext
         modifiers={[restrictToHorizontalAxis, createSnapModifier(5)]}
@@ -532,10 +537,6 @@ const LayerNodeSettings = ({
 
   if (!properties) return null;
 
-  // return (
-
-  // )
-
   return (
     <div className="grid grid-cols-[150px_auto] mr-[-150px] relative z-[1]">
       <div className="font-medium sticky left-0 bg-slate-100 rounded-lg px-2 py-1 mt-5 mb-1 z-[1]">
@@ -556,6 +557,11 @@ const LayerNodeSettings = ({
             delay,
           }}
           onChange={(x) => updateProperty(idx, x)}
+          onClick={(p) => {
+            setProperties((prevState) => {
+              return prevState?.filter((x) => x.name !== p.name);
+            });
+          }}
         />
       ))}
 
@@ -773,10 +779,8 @@ const RenderLayerNode = ({
       }}
       animate={layerVariants[layerNode.id][selectedVariant]}
     >
-      <div className="relative">
-        {/* Layer children */}
-        {renderChildren()}
-      </div>
+      {/* Layer children */}
+      {renderChildren()}
     </m.div>
   );
 };
