@@ -119,21 +119,15 @@ export const convertNodePropsToStyles = (node: SceneNode) => {
       const rotationValue = Math.floor(rotation);
 
       if (rotationValue) {
-        const deg = (rotationValue * 180) / Math.PI;
         const relativeTransform = node.relativeTransform;
 
-        const matrix = [
-          Math.cos(relativeTransform[0][0]),
-          Math.sin(relativeTransform[0][1]),
-          0,
-          -Math.sin(relativeTransform[1][0]),
-          Math.cos(relativeTransform[1][1]),
-          0,
-        ];
+        const values = [...relativeTransform[0], ...relativeTransform[1]];
+        // const angle = rotationValue * (Math.PI / 180);
+        const angle = Math.atan2(values[1], values[0]) * (180 / Math.PI) + 90;
 
         styles.push(
-          ['__rotate', `${rotationValue}deg`],
-          ['__matrix', matrix.join(', ')],
+          ['__rotate', `${+angle.toFixed(2)}deg`],
+          ['__matrix', values.join(', ')],
         );
 
         console.log('s', styles[styles.length - 1]);
