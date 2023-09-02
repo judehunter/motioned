@@ -768,9 +768,6 @@ const RenderLayerNode = ({
         ...(layerNode.styles.__rotate
           ? {
               '--rotate-z': layerNode.styles.__rotate,
-              '--matrix': layerNode.styles.__matrix,
-              // left: layerNode.styles.rotateLeft,
-              // top: layerNode.styles.rotateTop,
             }
           : {}),
       }}

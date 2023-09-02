@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { P, match } from 'ts-pattern';
 
+import {} from '@gi';
+
 const justifyContentCssValues = {
   MIN: 'flex-start',
   MAX: 'flex-end',
@@ -119,18 +121,10 @@ export const convertNodePropsToStyles = (node: SceneNode) => {
       const rotationValue = Math.floor(rotation);
 
       if (rotationValue) {
-        const relativeTransform = node.relativeTransform;
-
-        const values = [...relativeTransform[0], ...relativeTransform[1]];
-        // const angle = rotationValue * (Math.PI / 180);
-        const angle = Math.atan2(values[1], values[0]) * (180 / Math.PI) + 90;
-
         styles.push(
-          ['__rotate', `${+angle.toFixed(2)}deg`],
-          ['__matrix', values.join(', ')],
+          ['__rotate', `${-rotationValue}deg`],
+          ['transform-origin', `top left`],
         );
-
-        console.log('s', styles[styles.length - 1]);
       }
     }
 
