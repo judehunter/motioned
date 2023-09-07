@@ -613,7 +613,7 @@ const walkNodeTree = (node: LayerNode) => {
   if (!node) return [];
   const nodes = [node];
   if (node.children) {
-    for (const child of node.children) {
+    for (const child of [...node.children].reverse()) {
       nodes.push(...walkNodeTree(child));
     }
   }
@@ -758,10 +758,6 @@ const RenderLayerNode = ({
       );
     });
   };
-  if (layerNode.type === 'GROUP') {
-    return <>{renderChildren()}</>;
-  }
-
   return (
     <m.div
       key={layerNode.id}
@@ -770,6 +766,8 @@ const RenderLayerNode = ({
         ...layerNode.styles,
         ...(layerNode.type === 'FRAME'
           ? { position: 'relative', top: 0, left: 0 }
+          : layerNode.type === 'GROUP'
+          ? { position: 'static' }
           : { position: 'absolute' }),
         ...(layerNode.styles.__rotate
           ? {
