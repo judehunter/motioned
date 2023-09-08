@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+## 0.0.3 - 2023-09-08
 ### Added
-
 - `initial={false}`, allows you to skip the initial animation when the component mounts.
-
+  
   In short, it takes the first value of `animate` and applies it as styles immediately.
-
+  
   ```jsx
   return (
     <m.div
@@ -24,15 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ```
 
 ## 0.0.2 - 2023-08-12
-
 ### Added
-
 - `times` key. You can set the times (or offsets) of each keyframe in a tween animation.
-
+  
   This lets you specify when a given keyframe is on the timeline using a fraction of the duration.
-
+  
   The times array should have the same length as your keyframe array. Only numbers 0-1 allowed.
-
+  
   ```jsx
   return (
     <m.div
@@ -46,9 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     />
   );
   ```
-
 - Custom cubic bézier easings. You can use any cubic bézier by specifying its points in a tuple.
-
+  
   ```jsx
   return (
     <m.div
@@ -61,11 +58,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     />
   );
   ```
-
 - Easing list. You can use different easings between pairs of keyframes by specifying them in an array.
-
+  
   The length of the easing array must be one smaller than the number of keyframes.
-
+  
   ```jsx
   return (
     <m.div
@@ -83,11 +79,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     />
   );
   ```
-
 - Predefined easings. You can use some predefined easings beyond just the native ones like `ease`.
-
+  
   The list, along with their bezier definitions:
-
+  
   ```jsx
   'circ-in':     [0.55, 0, 1, 0.45],
   'circ-out':    [0, 0.55, 0.45, 1],
