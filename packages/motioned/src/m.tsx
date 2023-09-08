@@ -4,6 +4,7 @@ import {
   matchAgainstVariants,
   matchAnimatePropertyNameToCssVariableName,
   mapEasingOrEasingList,
+  stripTransition,
 } from './utils.js';
 import {
   AnimateOptions,
@@ -227,25 +228,29 @@ const makeMElem = <TElement extends keyof React.JSX.IntrinsicElements>(
         variants,
         ...rest
       }: {
-        initial?: AnimateProperties | NoInfer<TVariants>;
+        initial?: AnimateProperties | NoInfer<TVariants> | false;
         animate: AnimateOptions | NoInfer<TVariants>;
         variants?: Variants<TVariants>;
         ref?: React.Ref<ElementTypeOf<TElement>>;
       } & ComponentProps<TElement>,
       ref: ForwardedRef<TElement>,
     ) => {
+      const initialOrAnimate = stripTransition(
+        initial === false ? animate : initial,
+      );
       const memodMatchedInitial = useMemo(
         () =>
-          initial
+          initialOrAnimate
             ? animatePropertiesToStyle(
                 matchAgainstVariants(
                   variants,
-                  initial as AnimateOptions | string,
+                  initialOrAnimate as AnimateOptions | string,
                 ) as AnimateProperties,
               )
             : {},
         [],
       );
+
       const elem = useRef<HTMLDivElement>(null!);
 
       useAnimation(elem, animate, variants);

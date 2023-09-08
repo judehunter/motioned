@@ -377,3 +377,12 @@ export const bezierDefinitionToEasing = (
   }
   return `cubic-bezier(${definition.join(',')})`;
 };
+
+export const stripTransition = <
+  T extends AnimateOptions | AnimateProperties | undefined,
+>(
+  x: T,
+): Omit<T, 'transition'> => {
+  const { transition, ...rest }: any = x ?? {};
+  return rest;
+};

@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Added
+
+- `initial={false}`, allows you to skip the initial animation when the component mounts.
+
+  In short, it takes the first value of `animate` and applies it as styles immediately.
+
+  ```jsx
+  return (
+    <m.div
+      initial={false}
+      animate={{width}}
+    >
+    /* equivalent to initial={{width}} */
+  )
+  ```
+
 ## 0.0.2 - 2023-08-12
 
 ### Added
