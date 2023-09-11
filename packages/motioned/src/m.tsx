@@ -5,6 +5,9 @@ import {
   matchAnimatePropertyNameToCssVariableName,
   mapEasingOrEasingList,
   stripTransition,
+  TweenTransition,
+  SpringTransition,
+  reduceTransitionInheritance,
 } from './utils.js';
 import {
   AnimateOptions,
@@ -36,6 +39,7 @@ const useAnimation = (
   elem: MutableRefObject<HTMLElement>,
   animate: AnimateOptions,
   variants: Variants | undefined,
+  transition: AnimateOptions['transition'] | undefined,
 ) => {
   const currentAnims = useRef<
     Record<
@@ -65,7 +69,7 @@ const useAnimation = (
       };
 
       // split transition and properties
-      const { transition: transitionObj, ...properties } = matchedAnimate;
+      const { transition: animateTransition, ...properties } = matchedAnimate;
 
       // loop over properties and create animations,
       // one for each property
@@ -115,22 +119,26 @@ const useAnimation = (
           coerceToCssValue(_name as AnimatePropertyName, value!),
         );
 
-        const transition =
-          transitionObj?.[_name as AnimatePropertyName] ?? transitionObj;
+        const resolvedTransition = reduceTransitionInheritance([
+          transition,
+          transition?.[_name as AnimatePropertyName],
+          animateTransition,
+          animateTransition?.[_name as AnimatePropertyName],
+        ]);
 
         let easing = asSelf(
-          transition?.easing ?? 'ease-in-out',
+          resolvedTransition?.easing ?? 'ease-in-out',
           (self) => self as typeof self | (string & {}),
         );
 
         let duration: number;
         let generator: undefined | Generator;
 
-        if (transition?.easing === 'spring') {
+        if (resolvedTransition?.easing === 'spring') {
           // NOTE: for springs, only two keyframes are currently supported
-          const stiffness = transition?.stiffness ?? 100;
-          const friction = transition?.friction ?? 10;
-          const mass = transition?.mass ?? 1;
+          const stiffness = resolvedTransition?.stiffness ?? 100;
+          const friction = resolvedTransition?.friction ?? 10;
+          const mass = resolvedTransition?.mass ?? 1;
 
           const from = extractNumberFromCssValue(`${rawKeyframes[0]}`);
           const to = extractNumberFromCssValue(`${rawKeyframes[1]}`);
@@ -145,21 +153,23 @@ const useAnimation = (
               stiffness,
               friction,
               mass,
-              restDistance: transition.restDistance,
-              restVelocity: transition.restVelocity,
+              restDistance: resolvedTransition.restDistance,
+              restVelocity: resolvedTransition.restVelocity,
             },
           );
           const s = sampleGenerator(generator, from, to);
           easing = `linear(${s.easingPositions.join(',')})`;
           duration = s.duration;
         } else {
-          duration = transition?.duration ?? DEFAULT_DURATION;
+          duration = resolvedTransition?.duration ?? DEFAULT_DURATION;
         }
 
         const [easingOrEasingList, times]: any = mapEasingOrEasingList(
           easing as any,
           duration,
-          transition?.easing === 'spring' ? undefined : transition?.times,
+          resolvedTransition?.easing === 'spring'
+            ? undefined
+            : resolvedTransition?.times,
         );
 
         // create and start animation
@@ -174,7 +184,7 @@ const useAnimation = (
           {
             duration,
             fill: 'forwards',
-            delay: transition?.delay,
+            delay: resolvedTransition?.delay,
           },
         );
         // add animation to current animation set
@@ -226,10 +236,12 @@ const makeMElem = <TElement extends keyof React.JSX.IntrinsicElements>(
         animate,
         initial,
         variants,
+        transition,
         ...rest
       }: {
         initial?: AnimateProperties | NoInfer<TVariants> | false;
         animate: AnimateOptions | NoInfer<TVariants>;
+        transition?: AnimateOptions['transition'];
         variants?: Variants<TVariants>;
         ref?: React.Ref<ElementTypeOf<TElement>>;
       } & ComponentProps<TElement>,
@@ -253,7 +265,7 @@ const makeMElem = <TElement extends keyof React.JSX.IntrinsicElements>(
 
       const elem = useRef<HTMLDivElement>(null!);
 
-      useAnimation(elem, animate, variants);
+      useAnimation(elem, animate, variants, transition);
 
       const ElementAsAny = Element as any;
 
@@ -274,137 +286,153 @@ const makeMElem = <TElement extends keyof React.JSX.IntrinsicElements>(
           style={{
             ...rest.style,
             ...memodMatchedInitial,
-            transform:
-              'translateX(var(--x, 0px)) translateY(var(--y, 0px)) rotateX(var(--rotate-x, 0deg)) rotateY(var(--rotate-y, 0deg)) rotateZ(var(--rotate-z, 0deg)) scaleX(var(--scale-x, 1)) scaleY(var(--scale-y, 1)) skewX(var(--skew-x, 0)) skewY(var(--skew-y, 0)) matrix(var(--matrix, 1, 0, 0, 1, 0, 0))',
+            transform: `translateX(var(--x, 0px)) translateY(var(--y, 0px)) translateZ(var(--z, 0px)) rotateX(var(--rotate-x, 0deg)) rotateY(var(--rotate-y, 0deg)) rotateZ(var(--rotate-z, 0deg)) scaleX(var(--scale-x, 1)) scaleY(var(--scale-y, 1)) skewX(var(--skew-x, 0)) skewY(var(--skew-y, 0)) matrix(var(--matrix, 1, 0, 0, 1, 0, 0)) ${
+              rest.style?.transform ?? ''
+            }`,
           }}
         />
       );
     },
   );
 
+// const makeMotioned =
+//   (htmlElement: keyof React.JSX.IntrinsicElements) =>
+//   <TProps extends Record<string, any>>(
+//     Component: (props: TProps) => React.JSX.Element,
+//   ) => ({props}: {props: NoInfer<TProps>}) => {
+//     const element = <Component {...props} />
+//     element.
+//   };
+// const ABC = ({ style }: { style: any }) => <div />;
+// const test = () => <ABC style={{ color: 'blue' }} />;
+// console.log();
+// makeMotioned('div');
+
 // the actual component type
 type MElem<TElement extends keyof React.JSX.IntrinsicElements> = ReturnType<
   typeof makeMElem<TElement>
 >;
 
+const htmlElements = [
+  'a',
+  'abbr',
+  'address',
+  'area',
+  'article',
+  'aside',
+  'audio',
+  'b',
+  'base',
+  'bdi',
+  'bdo',
+  'blockquote',
+  'body',
+  'br',
+  'button',
+  'canvas',
+  'caption',
+  'cite',
+  'code',
+  'col',
+  'colgroup',
+  'data',
+  'datalist',
+  'dd',
+  'del',
+  'details',
+  'dfn',
+  'dialog',
+  'div',
+  'dl',
+  'dt',
+  'em',
+  'embed',
+  'fieldset',
+  'figcaption',
+  'figure',
+  'footer',
+  'form',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'head',
+  'header',
+  'hgroup',
+  'hr',
+  'html',
+  'i',
+  'iframe',
+  'img',
+  'input',
+  'ins',
+  'kbd',
+  'label',
+  'legend',
+  'li',
+  'link',
+  'main',
+  'map',
+  'mark',
+  'menu',
+  'meta',
+  'meter',
+  'nav',
+  'noscript',
+  'object',
+  'ol',
+  'optgroup',
+  'option',
+  'output',
+  'p',
+  'path',
+  'param',
+  'picture',
+  'pre',
+  'progress',
+  'q',
+  'rp',
+  'rt',
+  'ruby',
+  's',
+  'samp',
+  'script',
+  'section',
+  'select',
+  'small',
+  'source',
+  'span',
+  'strong',
+  'style',
+  'sub',
+  'summary',
+  'sup',
+  'svg',
+  'table',
+  'tbody',
+  'td',
+  'template',
+  'textarea',
+  'tfoot',
+  'th',
+  'thead',
+  'time',
+  'title',
+  'tr',
+  'track',
+  'u',
+  'ul',
+  'var',
+  'video',
+  'wbr',
+] as const;
+
 // all HTML elements mapped
 // TODO: should probably exclude stuff like "title"
 export const m = Object.fromEntries(
-  [
-    'a',
-    'abbr',
-    'address',
-    'area',
-    'article',
-    'aside',
-    'audio',
-    'b',
-    'base',
-    'bdi',
-    'bdo',
-    'blockquote',
-    'body',
-    'br',
-    'button',
-    'canvas',
-    'caption',
-    'cite',
-    'code',
-    'col',
-    'colgroup',
-    'data',
-    'datalist',
-    'dd',
-    'del',
-    'details',
-    'dfn',
-    'dialog',
-    'div',
-    'dl',
-    'dt',
-    'em',
-    'embed',
-    'fieldset',
-    'figcaption',
-    'figure',
-    'footer',
-    'form',
-    'h1',
-    'h2',
-    'h3',
-    'h4',
-    'h5',
-    'h6',
-    'head',
-    'header',
-    'hgroup',
-    'hr',
-    'html',
-    'i',
-    'iframe',
-    'img',
-    'input',
-    'ins',
-    'kbd',
-    'label',
-    'legend',
-    'li',
-    'link',
-    'main',
-    'map',
-    'mark',
-    'menu',
-    'meta',
-    'meter',
-    'nav',
-    'noscript',
-    'object',
-    'ol',
-    'optgroup',
-    'option',
-    'output',
-    'p',
-    'path',
-    'param',
-    'picture',
-    'pre',
-    'progress',
-    'q',
-    'rp',
-    'rt',
-    'ruby',
-    's',
-    'samp',
-    'script',
-    'section',
-    'select',
-    'small',
-    'source',
-    'span',
-    'strong',
-    'style',
-    'sub',
-    'summary',
-    'sup',
-    'svg',
-    'table',
-    'tbody',
-    'td',
-    'template',
-    'textarea',
-    'tfoot',
-    'th',
-    'thead',
-    'time',
-    'title',
-    'tr',
-    'track',
-    'u',
-    'ul',
-    'var',
-    'video',
-    'wbr',
-  ].map((name) => [name, makeMElem(name as any)]),
+  htmlElements.map((name) => [name, makeMElem(name as any)]),
 ) as any as {
   // mapping all html elements to their m counterparts
   [K in keyof React.JSX.IntrinsicElements]: MElem<K>;
