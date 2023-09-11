@@ -386,3 +386,32 @@ export const stripTransition = <
   const { transition, ...rest }: any = x ?? {};
   return rest;
 };
+
+/**
+ * Given a list of transition objects,
+ * applies them from left to right by spreading,
+ * and resetting if the easing type (spring or not spring) changes.
+ */
+export const reduceTransitionInheritance = (
+  tree: (TweenTransition | SpringTransition | undefined)[],
+) => {
+  return tree.reduce((acc, cur) => {
+    if (!acc) {
+      return cur;
+    }
+    if (cur) {
+      // TODO:
+      // if (
+      //   (cur.easing === 'spring' && acc.easing !== 'spring') ||
+      //   (cur.easing !== 'spring' && acc.easing === 'spring')
+      // ) {
+      //   return cur;
+      // }
+      return {
+        ...acc,
+        ...cur,
+      };
+    }
+    return acc;
+  }, undefined as TweenTransition | SpringTransition | undefined);
+};
